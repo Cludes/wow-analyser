@@ -1,0 +1,66 @@
+name: Refresh WCL Token
+
+on:
+  schedule:
+    - cron: '0 */20 * * *'   # every 20 hours (tokens last 24h)
+  workflow_dispatch:           # allow manual trigger from Actions tab
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Generate GitHub App token
+        id: app-token
+        uses: tibdex/github-app-token@v2
+        with:
+          app_id:      ${{ secrets.CLUDESAPP_ID }}
+          private_key: ${{ secrets.CLUDESAPP_PEM }}
+
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+
+      - name: Fetch WCL OAuth token
+        env:
+          WCL_CLIENT_ID: ${{ secrets.WOWLOGS_CLIENT_ID }}
+          WCL_API_KEY:   ${{ secrets.WOWLOGS_API_KEY }}
+        run: |
+          CREDENTIALS=$(printf '%s:%s' "$WCL_CLIENT_ID" "$WCL_API_KEY" | base64 -w 0)
+
+          RESPONSE=$(curl -sf -X POST https://www.warcraftlogs.com/oauth/token \
+            -H "Authorization: Basic $CREDENTIALS" \
+            -d "grant_type=client_credentials")
+
+          if [ $? -ne 0 ]; then
+            echo "Failed to reach WarcraftLogs OAuth endpoint"
+            exit 1
+          fi
+
+          TOKEN=$(echo "$RESPONSE" | jq -r '.access_token')
+          EXPIRES_IN=$(echo "$RESPONSE" | jq -r '.expires_in')
+
+          if [ "$TOKEN" = "null" ] || [ -z "$TOKEN" ]; then
+            echo "Bad response from WarcraftLogs: $RESPONSE"
+            exit 1
+          fi
+
+          jq -n \
+            --arg token "$TOKEN" \
+            --argjson expires "$EXPIRES_IN" \
+            --arg generated "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+            '{"token": $token, "expires_in": $expires, "generated": $generated}' \
+            > config.json
+
+          echo "Token refreshed, expires in ${EXPIRES_IN}s"
+
+      - name: Commit and push
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          git config user.name  "CludesApp[bot]"
+          git config user.email "CludesApp[bot]@users.noreply.github.com"
+          git remote set-url origin https://x-access-token:$GH_TOKEN@github.com/${{ github.repository }}
+          git add config.json
+          git diff --staged --quiet && echo "Token unchanged, no commit needed" || git commit -m "Refresh WCL token [skip ci]"
+          git push

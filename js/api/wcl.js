@@ -1,10 +1,15 @@
 const GQL_ENDPOINT = 'https://www.warcraftlogs.com/api/v2/client';
 const TOKEN_ENDPOINT = 'https://www.warcraftlogs.com/oauth/token';
 
+// How long before expiry we stop trusting the CI token (2h buffer, refresh runs every 20h)
+const CI_TOKEN_TTL = 20 * 60 * 60 * 1000;
+
 class WCLClient {
   constructor() {
     this._token = null;
     this._tokenExpiry = 0;
+    this._ciChecked = false;
+    this._usingCIToken = false;
   }
 
   get clientId()     { return localStorage.getItem('wcl_client_id') || ''; }
@@ -13,16 +18,45 @@ class WCLClient {
   setCredentials(id, secret) {
     localStorage.setItem('wcl_client_id', id);
     localStorage.setItem('wcl_client_secret', secret);
+    // clear cached token so next request uses manual credentials
     this._token = null;
     this._tokenExpiry = 0;
+    this._usingCIToken = false;
   }
 
   hasCredentials() {
     return !!(this.clientId && this.clientSecret);
   }
 
+  // Returns true if the app is running with a CI-managed token (no manual setup needed)
+  get usingCIToken() { return this._usingCIToken; }
+
   async _fetchToken() {
     if (this._token && Date.now() < this._tokenExpiry) return this._token;
+
+    // Try config.json written by GitHub Actions first
+    if (!this._ciChecked) {
+      this._ciChecked = true;
+      try {
+        const resp = await fetch('./config.json', { cache: 'no-cache' });
+        if (resp.ok) {
+          const cfg = await resp.json();
+          if (cfg.token) {
+            this._token = cfg.token;
+            this._tokenExpiry = Date.now() + CI_TOKEN_TTL;
+            this._usingCIToken = true;
+            return this._token;
+          }
+        }
+      } catch {
+        // config.json not present or invalid - fall through to manual auth
+      }
+    }
+
+    // Fall back to client credentials entered manually
+    if (!this.hasCredentials()) {
+      throw new Error('No API credentials. Enter your WarcraftLogs Client ID and Secret, or set up GitHub Actions.');
+    }
     const resp = await fetch(TOKEN_ENDPOINT, {
       method: 'POST',
       headers: {
@@ -38,6 +72,7 @@ class WCLClient {
     const data = await resp.json();
     this._token = data.access_token;
     this._tokenExpiry = Date.now() + data.expires_in * 1000 - 30_000;
+    this._usingCIToken = false;
     return this._token;
   }
 
