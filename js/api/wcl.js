@@ -144,7 +144,6 @@ query GetReport($code: String!) {
         friendlyPlayers
         bossPercentage fightPercentage
         gameZone { id name }
-        lastPhaseForPercentages
         averageItemLevel
       }
       masterData {
