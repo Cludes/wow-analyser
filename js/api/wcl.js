@@ -1,67 +1,125 @@
-const GQL_ENDPOINT = 'https://www.warcraftlogs.com/api/v2/client';
-const TOKEN_ENDPOINT = 'https://www.warcraftlogs.com/oauth/token';
-
-// How long before expiry we stop trusting the CI token (2h buffer, refresh runs every 20h)
-const CI_TOKEN_TTL = 20 * 60 * 60 * 1000;
+const GQL_ENDPOINT    = 'https://www.warcraftlogs.com/api/v2/client';
+const TOKEN_ENDPOINT  = 'https://www.warcraftlogs.com/oauth/token';
+const AUTH_ENDPOINT   = 'https://www.warcraftlogs.com/oauth/authorize';
 
 class WCLClient {
   constructor() {
-    this._token = null;
+    this._token       = null;
     this._tokenExpiry = 0;
-    this._ciChecked = false;
-    this._usingCIToken = false;
   }
 
-  get clientId()     { return localStorage.getItem('wcl_client_id') || ''; }
+  // --- credentials (manual fallback only) ---
+
+  get clientId()     { return localStorage.getItem('wcl_client_id')     || ''; }
   get clientSecret() { return localStorage.getItem('wcl_client_secret') || ''; }
 
   setCredentials(id, secret) {
-    localStorage.setItem('wcl_client_id', id);
+    localStorage.setItem('wcl_client_id',     id);
     localStorage.setItem('wcl_client_secret', secret);
-    // clear cached token so next request uses manual credentials
-    this._token = null;
+    this._token       = null;
     this._tokenExpiry = 0;
-    this._usingCIToken = false;
   }
 
-  hasCredentials() {
-    return !!(this.clientId && this.clientSecret);
+  hasCredentials() { return !!(this.clientId && this.clientSecret); }
+
+  // --- user auth state ---
+
+  isLoggedIn() {
+    return !!(localStorage.getItem('wcl_access_token'));
   }
 
-  // Returns true if the app is running with a CI-managed token (no manual setup needed)
-  get usingCIToken() { return this._usingCIToken; }
+  logout() {
+    localStorage.removeItem('wcl_access_token');
+    localStorage.removeItem('wcl_token_expiry');
+    localStorage.removeItem('wcl_refresh_token');
+    this._token       = null;
+    this._tokenExpiry = 0;
+  }
+
+  // --- OAuth authorization code flow ---
+
+  get _redirectUri() {
+    return window.location.origin + window.location.pathname;
+  }
+
+  startAuthFlow() {
+    if (!this.clientId) throw new Error('Enter your Client ID first.');
+    const state = crypto.randomUUID();
+    sessionStorage.setItem('wcl_oauth_state', state);
+    const params = new URLSearchParams({
+      client_id:     this.clientId,
+      redirect_uri:  this._redirectUri,
+      response_type: 'code',
+      scope:         'view-user-profile view-private-reports',
+      state,
+    });
+    window.location.href = `${AUTH_ENDPOINT}?${params}`;
+  }
+
+  // Call on page load - returns true if a callback was handled
+  async handleAuthCallback() {
+    const params = new URLSearchParams(window.location.search);
+    const code   = params.get('code');
+    const state  = params.get('state');
+    if (!code) return false;
+
+    const saved = sessionStorage.getItem('wcl_oauth_state');
+    sessionStorage.removeItem('wcl_oauth_state');
+    if (state !== saved) throw new Error('OAuth state mismatch - possible CSRF attack.');
+    if (!this.hasCredentials()) throw new Error('Client credentials missing. Re-enter your Client ID and Secret.');
+
+    const resp = await fetch(TOKEN_ENDPOINT, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        Authorization:  'Basic ' + _basicAuth(this.clientId, this.clientSecret),
+      },
+      body: new URLSearchParams({
+        grant_type:   'authorization_code',
+        code,
+        redirect_uri: this._redirectUri,
+      }),
+    });
+
+    if (!resp.ok) {
+      const txt = await resp.text();
+      throw new Error(`Token exchange failed (${resp.status}): ${txt}`);
+    }
+
+    const data = await resp.json();
+    _storeUserToken(data);
+    window.history.replaceState({}, '', window.location.pathname);
+    return true;
+  }
+
+  // --- token resolution (priority: user token > refresh > client_credentials) ---
 
   async _fetchToken() {
-    if (this._token && Date.now() < this._tokenExpiry) return this._token;
+    // 1. Valid user token in localStorage
+    const stored       = localStorage.getItem('wcl_access_token');
+    const storedExpiry = parseInt(localStorage.getItem('wcl_token_expiry') ?? '0');
+    if (stored && Date.now() < storedExpiry) return stored;
 
-    // Try config.json written by GitHub Actions first
-    if (!this._ciChecked) {
-      this._ciChecked = true;
+    // 2. Try refresh token
+    const refresh = localStorage.getItem('wcl_refresh_token');
+    if (refresh) {
       try {
-        const resp = await fetch('./config.json', { cache: 'no-cache' });
-        if (resp.ok) {
-          const cfg = await resp.json();
-          if (cfg.token) {
-            this._token = cfg.token;
-            this._tokenExpiry = Date.now() + CI_TOKEN_TTL;
-            this._usingCIToken = true;
-            return this._token;
-          }
-        }
+        await this._refreshUserToken(refresh);
+        return localStorage.getItem('wcl_access_token');
       } catch {
-        // config.json not present or invalid - fall through to manual auth
+        this.logout();
       }
     }
 
-    // Fall back to client credentials entered manually
+    // 3. Client credentials fallback (public reports only)
     if (!this.hasCredentials()) {
-      throw new Error('No API credentials. Enter your WarcraftLogs Client ID and Secret, or set up GitHub Actions.');
+      throw new Error('Not logged in. Click "Login with WarcraftLogs" to authenticate.');
     }
     const resp = await fetch(TOKEN_ENDPOINT, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
-        Authorization: 'Basic ' + btoa(unescape(encodeURIComponent(`${this.clientId}:${this.clientSecret}`))),
+        Authorization:  'Basic ' + _basicAuth(this.clientId, this.clientSecret),
       },
       body: 'grant_type=client_credentials',
     });
@@ -70,21 +128,36 @@ class WCLClient {
       throw new Error(`Auth failed (${resp.status}): ${txt}`);
     }
     const data = await resp.json();
-    this._token = data.access_token;
+    this._token       = data.access_token;
     this._tokenExpiry = Date.now() + data.expires_in * 1000 - 30_000;
-    this._usingCIToken = false;
     return this._token;
   }
 
-  async query(gql, variables = {}) {
-    const token = await this._fetchToken();
-    const resp = await fetch(GQL_ENDPOINT, {
+  async _refreshUserToken(refreshToken) {
+    if (!this.hasCredentials()) throw new Error('No credentials for refresh.');
+    const resp = await fetch(TOKEN_ENDPOINT, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/x-www-form-urlencoded',
+        Authorization:  'Basic ' + _basicAuth(this.clientId, this.clientSecret),
       },
-      body: JSON.stringify({ query: gql, variables }),
+      body: new URLSearchParams({
+        grant_type:    'refresh_token',
+        refresh_token: refreshToken,
+      }),
+    });
+    if (!resp.ok) throw new Error('Refresh failed');
+    _storeUserToken(await resp.json());
+  }
+
+  // --- GraphQL ---
+
+  async query(gql, variables = {}) {
+    const token = await this._fetchToken();
+    const resp  = await fetch(GQL_ENDPOINT, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body:    JSON.stringify({ query: gql, variables }),
     });
     if (!resp.ok) throw new Error(`GQL request failed: ${resp.status}`);
     const result = await resp.json();
@@ -92,19 +165,17 @@ class WCLClient {
     return result.data;
   }
 
+  // Fetch the logged-in user's name
+  async getCurrentUser() {
+    const data = await this.query(`query { userData { currentUser { name id } } }`);
+    return data?.userData?.currentUser ?? null;
+  }
+
   // --- high-level helpers ---
 
-  async getReport(code) {
-    return this.query(QUERY_REPORT, { code });
-  }
-
-  async getFightTable(code, fightId, dataType) {
-    return this.query(QUERY_TABLE, { code, fightId, dataType });
-  }
-
-  async getFightGraph(code, fightId, dataType) {
-    return this.query(QUERY_GRAPH, { code, fightId, dataType });
-  }
+  async getReport(code)                          { return this.query(QUERY_REPORT, { code }); }
+  async getFightTable(code, fightId, dataType)   { return this.query(QUERY_TABLE,  { code, fightId, dataType }); }
+  async getFightGraph(code, fightId, dataType)   { return this.query(QUERY_GRAPH,  { code, fightId, dataType }); }
 
   async getFightEvents(code, fightId, dataType, startTime, endTime) {
     const events = [];
@@ -119,22 +190,29 @@ class WCLClient {
     return events;
   }
 
-  async getCasts(code, fightId, startTime, endTime) {
-    return this.getFightEvents(code, fightId, 'Casts', startTime, endTime);
-  }
-
-  async getDeaths(code, fightId, startTime, endTime) {
-    return this.getFightEvents(code, fightId, 'Deaths', startTime, endTime);
-  }
+  async getCasts(code, fightId, s, e)  { return this.getFightEvents(code, fightId, 'Casts',  s, e); }
+  async getDeaths(code, fightId, s, e) { return this.getFightEvents(code, fightId, 'Deaths', s, e); }
 }
+
+// --- module-level helpers ---
+
+function _basicAuth(id, secret) {
+  return btoa(unescape(encodeURIComponent(`${id}:${secret}`)));
+}
+
+function _storeUserToken(data) {
+  localStorage.setItem('wcl_access_token',  data.access_token);
+  localStorage.setItem('wcl_token_expiry',  String(Date.now() + data.expires_in * 1000 - 30_000));
+  if (data.refresh_token) localStorage.setItem('wcl_refresh_token', data.refresh_token);
+}
+
+// --- GraphQL queries ---
 
 const QUERY_REPORT = `
 query GetReport($code: String!) {
   reportData {
     report(code: $code) {
-      title
-      startTime
-      endTime
+      title startTime endTime
       zone { id name }
       region { name }
       guild { name }

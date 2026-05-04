@@ -24,9 +24,10 @@
 
     <div class="header-actions">
       <button id="btn-roast-toggle" class="btn btn-roast roast-on">Roast Mode: ON</button>
-      <button id="btn-api-settings" class="btn btn-ghost" title="API Credentials">
-        <span id="cred-status" class="cred-missing">API</span>
-      </button>
+      <button id="btn-login" class="btn btn-login">Login with WarcraftLogs</button>
+      <span id="auth-user-label" class="auth-user-label" style="display:none"></span>
+      <button id="btn-logout" class="btn btn-ghost" style="display:none">Logout</button>
+      <button id="btn-api-settings" class="btn btn-ghost btn-creds" title="API Credentials">Credentials</button>
     </div>
   </header>
 
@@ -107,10 +108,10 @@
       </div>
       <div class="modal-body">
         <p class="modal-info">
-          <strong>GitHub Actions mode (recommended):</strong> Add <code>WOWLOGS_CLIENT_ID</code> and
-          <code>WOWLOGS_API_KEY</code> as repository secrets - the workflow refreshes a token automatically.<br><br>
-          <strong>Manual mode:</strong> Create a client at <strong>warcraftlogs.com/api/clients</strong>
-          and paste the credentials below. Stored in your browser only, never sent anywhere except WarcraftLogs.
+          Create a client at <strong>warcraftlogs.com/api/clients</strong>.<br><br>
+          Set the redirect URI to: <code id="redirect-uri-display">loading...</code><br><br>
+          Paste your Client ID and Secret below, save, then click <strong>Login with WarcraftLogs</strong>.
+          Your credentials stay in your browser only.
         </p>
         <div class="form-group">
           <label class="form-label">Client ID</label>

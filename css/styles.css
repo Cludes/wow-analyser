@@ -144,9 +144,30 @@ html, body {
 }
 .btn-icon:hover { color: var(--text); }
 
-/* ===== CRED STATUS ===== */
-.cred-ok     { color: var(--green); font-size: 12px; font-weight: 700; }
-.cred-missing { color: var(--red);  font-size: 12px; font-weight: 700; }
+/* ===== AUTH BUTTONS ===== */
+.btn-login {
+  background: linear-gradient(135deg, #b8900a, var(--gold));
+  color: #0a0a12;
+  border-color: var(--gold);
+  font-weight: 700;
+}
+.btn-login:hover { box-shadow: 0 0 16px var(--gold-glow); }
+
+.btn-creds {
+  font-size: 12px;
+  padding: 6px 12px;
+  opacity: 0.6;
+}
+.btn-creds:hover { opacity: 1; }
+
+.auth-user-label {
+  align-items: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--green);
+  padding: 0 4px;
+  white-space: nowrap;
+}
 
 /* ===== ERROR BANNER ===== */
 .error-banner {
