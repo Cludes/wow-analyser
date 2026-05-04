@@ -223,8 +223,8 @@ async function selectFight(fightId) {
       wcl.getFightTable(code, fightId, 'DamageDone'),
       wcl.getFightTable(code, fightId, 'HealingDone'),
       wcl.getFightTable(code, fightId, 'DamageTaken'),
-      wcl.getFightGraph(code, fightId, 'DamageDone'),
-      wcl.getFightGraph(code, fightId, 'HealingDone'),
+      wcl.getFightGraph(code, fightId, 'Damage'),
+      wcl.getFightGraph(code, fightId, 'Healing'),
       wcl.getDeaths(code, fightId, fight.startTime, fight.endTime),
       wcl.getCasts(code, fightId, fight.startTime, fight.endTime),
     ]);
