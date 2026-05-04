@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WoW Logs Analyser</title>
+  <link rel="stylesheet" href="css/styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+  <!-- HEADER -->
+  <header class="app-header">
+    <div class="header-logo">
+      <div class="logo-icon"></div>
+      <span class="logo-text">WoW Logs <span class="logo-accent">Analyser</span></span>
+    </div>
+
+    <div class="header-input-group">
+      <input id="inp-report" class="report-input" type="text"
+        placeholder="Paste WarcraftLogs URL or report code..." spellcheck="false">
+      <button id="btn-load" class="btn btn-primary">Load Fight Data</button>
+    </div>
+
+    <div class="header-actions">
+      <button id="btn-roast-toggle" class="btn btn-roast roast-on">Roast Mode: ON</button>
+      <button id="btn-api-settings" class="btn btn-ghost" title="API Credentials">
+        <span id="cred-status" class="cred-missing">API</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- ERROR BANNER -->
+  <div id="error-banner" class="error-banner" style="display:none"></div>
+
+  <!-- FIGHT SELECTOR -->
+  <div id="fight-selector" class="fight-selector" style="display:none">
+    <div class="fight-selector-header">
+      <span id="report-title" class="report-title"></span>
+    </div>
+    <div id="fight-list" class="fight-list"></div>
+  </div>
+
+  <!-- DASHBOARD -->
+  <main id="dashboard" class="dashboard" style="display:none">
+    <!-- TAB NAV -->
+    <nav class="tab-nav">
+      <button class="tab-btn active" data-tab="overview">Overview</button>
+      <button class="tab-btn" data-tab="dps">DPS / HPS</button>
+      <button class="tab-btn" data-tab="cooldowns">Cooldowns</button>
+      <button class="tab-btn" data-tab="analysis">Analysis</button>
+      <button class="tab-btn" data-tab="timeline">Timeline</button>
+    </nav>
+
+    <!-- TAB PANES -->
+    <div class="tab-content">
+      <div id="tab-overview"  class="tab-pane active"></div>
+      <div id="tab-dps"       class="tab-pane"></div>
+      <div id="tab-cooldowns" class="tab-pane"></div>
+      <div id="tab-analysis"  class="tab-pane"></div>
+      <div id="tab-timeline"  class="tab-pane"></div>
+    </div>
+  </main>
+
+  <!-- HERO (shown when no report loaded) -->
+  <div id="hero" class="hero">
+    <div class="hero-content">
+      <h1 class="hero-title">Raid Analysis<br><span class="hero-accent">Without the Mercy</span></h1>
+      <p class="hero-sub">Paste a WarcraftLogs URL above to get started.<br>Get performance insights, cooldown tracking, and slightly savage commentary.</p>
+      <div class="hero-steps">
+        <div class="hero-step">
+          <div class="step-num">1</div>
+          <div class="step-text">Set your WCL API credentials via the API button</div>
+        </div>
+        <div class="hero-step">
+          <div class="step-num">2</div>
+          <div class="step-text">Paste a WarcraftLogs report URL or code</div>
+        </div>
+        <div class="hero-step">
+          <div class="step-num">3</div>
+          <div class="step-text">Select a fight and let the roasting begin</div>
+        </div>
+      </div>
+    </div>
+    <div class="hero-bg"></div>
+  </div>
+
+  <!-- LOADING OVERLAY -->
+  <div id="loading-overlay" class="loading-overlay" style="display:none">
+    <div class="spinner"></div>
+    <div class="loading-text">Fetching fight data...</div>
+  </div>
+
+  <!-- TOAST -->
+  <div id="toast" class="toast"></div>
+
+  <!-- CANVAS TOOLTIP (shared) -->
+  <div class="canvas-tooltip" id="cd-tooltip" style="display:none"></div>
+  <div class="canvas-tooltip" id="rt-tooltip" style="display:none"></div>
+
+  <!-- MODAL: API CREDENTIALS -->
+  <div id="modal-credentials" class="modal-backdrop" style="display:none">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 class="modal-title">WarcraftLogs API Credentials</h2>
+        <button class="btn-icon" id="btn-cancel-creds">&#x2715;</button>
+      </div>
+      <div class="modal-body">
+        <p class="modal-info">
+          Create a client at <strong>warcraftlogs.com/api/clients</strong>.<br>
+          Use <code>http://localhost</code> as the redirect URI. Credentials are stored locally only.
+        </p>
+        <div class="form-group">
+          <label class="form-label">Client ID</label>
+          <input id="inp-client-id" class="form-input" type="text" placeholder="your-client-id" autocomplete="off">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Client Secret</label>
+          <input id="inp-client-secret" class="form-input" type="password" placeholder="your-client-secret" autocomplete="off">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" id="btn-cancel-creds-2" onclick="document.getElementById('modal-credentials').style.display='none'">Cancel</button>
+        <button class="btn btn-primary" id="btn-save-creds">Save Credentials</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: PLAYER DETAIL -->
+  <div id="modal-player-detail" class="modal-backdrop" style="display:none">
+    <div class="modal modal-wide">
+      <div class="modal-header">
+        <h2 class="modal-title">Player Deep Dive</h2>
+        <button class="btn-icon" id="btn-close-detail">&#x2715;</button>
+      </div>
+      <div class="modal-body" id="player-detail-content"></div>
+    </div>
+  </div>
+
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
