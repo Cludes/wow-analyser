@@ -1,6 +1,7 @@
-const GQL_ENDPOINT    = 'https://www.warcraftlogs.com/api/v2/client';
-const TOKEN_ENDPOINT  = 'https://www.warcraftlogs.com/oauth/token';
-const AUTH_ENDPOINT   = 'https://www.warcraftlogs.com/oauth/authorize';
+const GQL_CLIENT_ENDPOINT = 'https://www.warcraftlogs.com/api/v2/client';
+const GQL_USER_ENDPOINT   = 'https://www.warcraftlogs.com/api/v2/user';
+const TOKEN_ENDPOINT      = 'https://www.warcraftlogs.com/oauth/token';
+const AUTH_ENDPOINT       = 'https://www.warcraftlogs.com/oauth/authorize';
 
 class WCLClient {
   constructor() {
@@ -155,8 +156,9 @@ class WCLClient {
   // --- GraphQL ---
 
   async query(gql, variables = {}) {
-    const token = await this._fetchToken();
-    const resp  = await fetch(GQL_ENDPOINT, {
+    const token    = await this._fetchToken();
+    const endpoint = this.isLoggedIn() ? GQL_USER_ENDPOINT : GQL_CLIENT_ENDPOINT;
+    const resp     = await fetch(endpoint, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
       body:    JSON.stringify({ query: gql, variables }),
