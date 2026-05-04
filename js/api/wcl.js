@@ -25,7 +25,9 @@ class WCLClient {
   // --- user auth state ---
 
   isLoggedIn() {
-    return !!(localStorage.getItem('wcl_access_token'));
+    const token  = localStorage.getItem('wcl_access_token');
+    const expiry = parseInt(localStorage.getItem('wcl_token_expiry') ?? '0');
+    return !!(token && Date.now() < expiry);
   }
 
   logout() {

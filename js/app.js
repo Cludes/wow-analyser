@@ -86,11 +86,15 @@ function bindEvents() {
   document.getElementById('btn-login').onclick = () => {
     if (!wcl.clientId) {
       showModal('modal-credentials');
-      showToast('Save your Client ID first, then click Login.');
+      showError('Enter your Client ID and Secret first, then click Login with WarcraftLogs.');
       return;
     }
-    try { wcl.startAuthFlow(); }
-    catch (err) { showError(err.message); }
+    try {
+      wcl.startAuthFlow();
+    } catch (err) {
+      console.error('startAuthFlow failed:', err);
+      showError('Login failed: ' + err.message);
+    }
   };
   document.getElementById('btn-logout').onclick = () => {
     wcl.logout();
