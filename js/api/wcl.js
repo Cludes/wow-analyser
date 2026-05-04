@@ -61,7 +61,7 @@ class WCLClient {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
-        Authorization: 'Basic ' + btoa(`${this.clientId}:${this.clientSecret}`),
+        Authorization: 'Basic ' + btoa(unescape(encodeURIComponent(`${this.clientId}:${this.clientSecret}`))),
       },
       body: 'grant_type=client_credentials',
     });
