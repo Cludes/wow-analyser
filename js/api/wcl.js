@@ -207,11 +207,12 @@ class WCLClient {
     return events;
   }
 
-  async getCasts(code, fightId, s, e)      { return this.getFightEvents(code, fightId, 'Casts',      s, e); }
-  async getDeaths(code, fightId, s, e)     { return this.getFightEvents(code, fightId, 'Deaths',     s, e); }
-  async getInterrupts(code, fightId, s, e) { return this.getFightEvents(code, fightId, 'Interrupts', s, e); }
-  async getDispels(code, fightId, s, e)    { return this.getFightEvents(code, fightId, 'Dispels',    s, e); }
-  async getResurrects(code, fightId, s, e) { return this.getFightEventsFiltered(code, fightId, "type = 'resurrect'", s, e); }
+  async getCasts(code, fightId, s, e)            { return this.getFightEvents(code, fightId, 'Casts',      s, e); }
+  async getBuffApplications(code, fightId, s, e) { return this.getFightEvents(code, fightId, 'Buffs',      s, e); }
+  async getDeaths(code, fightId, s, e)           { return this.getFightEvents(code, fightId, 'Deaths',     s, e); }
+  async getInterrupts(code, fightId, s, e)       { return this.getFightEvents(code, fightId, 'Interrupts', s, e); }
+  async getDispels(code, fightId, s, e)          { return this.getFightEvents(code, fightId, 'Dispels',    s, e); }
+  async getResurrects(code, fightId, s, e)       { return this.getFightEventsFiltered(code, fightId, "type = 'resurrect'", s, e); }
 }
 
 // --- module-level helpers ---

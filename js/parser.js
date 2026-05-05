@@ -125,7 +125,7 @@ export function parseDeaths(events, actorMap = {}) {
 }
 
 export function parseCasts(events, actorMap = {}) {
-  return events.filter(e => e.type === 'cast').map(e => ({
+  return events.filter(e => e.type === 'cast' || e.type === 'applybuff').map(e => ({
     timestamp:  e.timestamp,
     sourceId:   e.sourceID,
     sourceName: actorMap[e.sourceID]?.name ?? e.sourceName ?? 'Unknown',

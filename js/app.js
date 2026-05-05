@@ -215,7 +215,7 @@ async function selectFight(fightId) {
     const code = S.report.code;
     const [
       dpsTableRaw, hpsTableRaw, dtTableRaw, dpsGraphRaw, hpsGraphRaw,
-      deathEvents, castEvents, interruptEvents, dispelEvents, resurrectEvents,
+      deathEvents, castEvents, buffEvents, interruptEvents, dispelEvents, resurrectEvents,
     ] = await Promise.all([
       wcl.getFightTable(code, fightId, 'DamageDone'),
       wcl.getFightTable(code, fightId, 'Healing'),
@@ -224,6 +224,7 @@ async function selectFight(fightId) {
       wcl.getFightGraph(code, fightId, 'Healing'),
       wcl.getDeaths(code, fightId, fight.startTime, fight.endTime),
       wcl.getCasts(code, fightId, fight.startTime, fight.endTime),
+      wcl.getBuffApplications(code, fightId, fight.startTime, fight.endTime),
       wcl.getInterrupts(code, fightId, fight.startTime, fight.endTime),
       wcl.getDispels(code, fightId, fight.startTime, fight.endTime),
       wcl.getResurrects(code, fightId, fight.startTime, fight.endTime),
@@ -233,8 +234,21 @@ async function selectFight(fightId) {
     const fightStart = fight.startTime;
     const rel        = t => t - fightStart;
 
+    // Merge buff applications with casts - many cooldowns fire as applybuff, not cast.
+    // Deduplicate by sourceID + spellId + second-bucket (group CDs apply once per target).
+    const playerIds = new Set(Object.keys(actors).map(Number));
+    const seen = new Set();
+    const dedupedBuffs = buffEvents.filter(e => {
+      if (e.type !== 'applybuff' || !playerIds.has(e.sourceID)) return false;
+      const key = `${e.sourceID}_${e.ability?.guid}_${Math.floor(e.timestamp / 1000)}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+    const mergedCastEvents = [...castEvents, ...dedupedBuffs];
+
     const deaths     = parseDeaths(deathEvents, actors);
-    const casts      = parseCasts(castEvents, actors);
+    const casts      = parseCasts(mergedCastEvents, actors);
     const interrupts = parseInterrupts(interruptEvents, actors);
     const dispels    = parseDispels(dispelEvents, actors);
     const resurrects = parseResurrects(resurrectEvents, actors);
