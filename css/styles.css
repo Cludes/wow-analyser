@@ -299,11 +299,15 @@ html, body {
 .role-badge.tank   { background: #4361ee22; color: #7b9ef0; border: 1px solid #4361ee55; }
 .role-badge.healer { background: #2ded6822; color: var(--green); border: 1px solid #2ded6855; }
 .role-badge.dps    { background: #e6394822; color: #f08090; border: 1px solid #e6394855; }
+.role-badge.melee  { background: #e6394822; color: #f08090; border: 1px solid #e6394855; }
+.role-badge.ranged { background: #9b59b622; color: #c39bd3; border: 1px solid #9b59b655; }
 
 .role-tag { font-size: 11px; font-weight: 600; padding: 1px 6px; border-radius: 3px; }
 .role-tag.tank   { background: #4361ee22; color: #7b9ef0; }
 .role-tag.healer { background: #2ded6822; color: var(--green); }
 .role-tag.dps    { background: #e6394822; color: #f08090; }
+.role-tag.melee  { background: #e6394822; color: #f08090; }
+.role-tag.ranged { background: #9b59b622; color: #c39bd3; }
 
 /* ===== BAR TABLE ===== */
 .bar-table { display: flex; flex-direction: column; gap: 2px; }
@@ -423,9 +427,24 @@ html, body {
 }
 
 /* ===== MISTAKES ===== */
-.mistakes-header { margin-bottom: 20px; }
-.mistakes-title  { font-size: 20px; font-weight: 800; color: var(--text); }
-.mistakes-sub    { color: var(--text-muted); font-size: 13px; margin-top: 4px; }
+.mistakes-header    { margin-bottom: 20px; }
+.mistakes-title-row { display: flex; align-items: center; gap: 14px; }
+.mistakes-title     { font-size: 20px; font-weight: 800; color: var(--text); }
+.mistakes-sub       { color: var(--text-muted); font-size: 13px; margin-top: 4px; }
+
+.fight-grade {
+  width: 44px; height: 44px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px; font-weight: 900;
+  border-radius: 6px;
+  border: 2px solid;
+  flex-shrink: 0;
+}
+.grade-a { color: #2ded68; border-color: #2ded6880; background: #2ded6810; }
+.grade-b { color: #7bc67e; border-color: #7bc67e80; background: #7bc67e10; }
+.grade-c { color: #f0b429; border-color: #f0b42980; background: #f0b42910; }
+.grade-d { color: #f08030; border-color: #f0803080; background: #f0803010; }
+.grade-f { color: var(--red); border-color: #e6394880; background: #e6394810; }
 
 .mistake-section { margin-bottom: 24px; }
 .mistake-section-header { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
@@ -457,6 +476,8 @@ html, body {
 .int-label        { font-size: 11px; color: var(--text-muted); text-transform: uppercase; letter-spacing: .05em; }
 .int-spell-chip   { background: var(--surface3); border: 1px solid var(--border); border-radius: 3px; padding: 2px 7px; font-size: 11px; color: var(--text); }
 .int-spell-chip em { color: var(--gold); font-style: normal; margin-left: 3px; }
+.int-zero-row   { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 12px; padding: 7px 10px; background: #e6394608; border: 1px solid #e6394820; border-radius: 4px; }
+.int-zero-chip  { font-size: 12px; font-weight: 600; }
 .int-table  { display: flex; flex-direction: column; gap: 5px; }
 .int-row    { display: flex; align-items: center; gap: 10px; padding: 7px 10px; background: var(--surface2); border-radius: 4px; }
 .int-name   { font-weight: 600; min-width: 130px; }

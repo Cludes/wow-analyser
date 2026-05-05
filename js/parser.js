@@ -41,7 +41,9 @@ function parseFight(f, actors) {
     .map(id => actors[id]);
   const tanks   = players.filter(p => p.role === 'Tank');
   const healers = players.filter(p => p.role === 'Healer');
-  const dps     = players.filter(p => p.role === 'DPS');
+  const melee   = players.filter(p => p.role === 'Melee');
+  const ranged  = players.filter(p => p.role === 'Ranged' || p.role === 'DPS');
+  const dps     = [...melee, ...ranged];
   return {
     id:         f.id,
     name:       f.name,
@@ -54,7 +56,7 @@ function parseFight(f, actors) {
     duration,
     bossPercent: f.bossPercentage ?? null,
     ilvl:       f.averageItemLevel ?? null,
-    players, tanks, healers, dps,
+    players, tanks, healers, dps, melee, ranged,
   };
 }
 

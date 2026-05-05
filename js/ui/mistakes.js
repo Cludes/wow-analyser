@@ -1,10 +1,13 @@
 import { CLASS_COLORS, CD_TYPE_COLORS, fmt } from '../constants.js';
 
-export function renderMistakes(container, { deaths, avoidable, underperformers, interrupts, dispels, cooldownEff }, roastMode) {
+export function renderMistakes(container, { deaths, avoidable, underperformers, interrupts, dispels, cooldownEff, zeroInterrupters, grade }, roastMode) {
   const hasIssues = deaths.length || avoidable.length || underperformers.length || cooldownEff.length;
   container.innerHTML = `
     <div class="mistakes-header">
-      <h2 class="mistakes-title">${roastMode ? '🔥 Raid Report Card' : 'Performance Analysis'}</h2>
+      <div class="mistakes-title-row">
+        <h2 class="mistakes-title">${roastMode ? '🔥 Raid Report Card' : 'Performance Analysis'}</h2>
+        ${grade ? renderGradeBadge(grade) : ''}
+      </div>
       <p class="mistakes-sub">${roastMode ? 'No feelings were spared in the making of this analysis.' : 'Objective performance summary.'}</p>
     </div>
     ${!hasIssues && !interrupts.total ? '<div class="empty-state">No issues detected. Suspicious.</div>' : ''}
@@ -12,7 +15,7 @@ export function renderMistakes(container, { deaths, avoidable, underperformers, 
     ${avoidable.length      ? renderSection('Avoidable Damage',    'shield-off',    avoidable.map(d => makeCard(d, 'avoidable')))    : ''}
     ${underperformers.length? renderSection('DPS Check',           'trending-down', underperformers.map(d => makeCard(d, 'dps')))    : ''}
     ${cooldownEff.length    ? renderSection('Cooldown Efficiency', 'clock',         [renderCooldownEff(cooldownEff)])                 : ''}
-    ${interrupts.total > 0  ? renderSection('Interrupts',          'zap',           [renderInterrupts(interrupts)])                  : ''}
+    ${interrupts.total > 0  ? renderSection('Interrupts',          'zap',           [renderInterrupts(interrupts, zeroInterrupters)]) : ''}
     ${dispels.total > 0     ? renderSection('Dispels',             'refresh-cw',    [renderDispels(dispels)])                        : ''}
   `;
 }
@@ -53,9 +56,15 @@ function buildExtra(d, type) {
   return '';
 }
 
+// --- Grade ---
+
+function renderGradeBadge({ grade, score }) {
+  return `<div class="fight-grade grade-${grade.toLowerCase()}" title="Score: ${score}">${grade}</div>`;
+}
+
 // --- Interrupts ---
 
-function renderInterrupts({ players, topSpells, total }) {
+function renderInterrupts({ players, topSpells, total }, zeroInterrupters = []) {
   const topSpellHtml = topSpells.length
     ? `<div class="int-top-spells">
         <span class="int-label">Most interrupted:</span>
@@ -63,10 +72,21 @@ function renderInterrupts({ players, topSpells, total }) {
        </div>`
     : '';
 
+  const zeroHtml = zeroInterrupters.length
+    ? `<div class="int-zero-row">
+        <span class="int-label">No interrupts:</span>
+        ${zeroInterrupters.map(p => {
+          const color = CLASS_COLORS[p.class] ?? '#888';
+          return `<span class="int-zero-chip" style="color:${color}">${p.player}</span>`;
+        }).join('')}
+       </div>`
+    : '';
+
   return `
     <div class="interrupt-block">
       <div class="int-summary">${total} total interrupts</div>
       ${topSpellHtml}
+      ${zeroHtml}
       <div class="int-table">
         ${players.map(p => {
           const color = CLASS_COLORS[p.class] ?? '#888';

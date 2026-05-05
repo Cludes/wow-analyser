@@ -4,6 +4,8 @@ export function renderOverview(container, report, fight, dpsTable, hpsTable) {
   const total = dpsTable.length;
   const tanks   = fight.tanks.length;
   const healers = fight.healers.length;
+  const melee   = fight.melee?.length ?? 0;
+  const ranged  = fight.ranged?.length ?? 0;
   const dps     = fight.dps.length;
 
   const totalDmg = dpsTable.reduce((s, e) => s + e.total, 0);
@@ -41,7 +43,8 @@ export function renderOverview(container, report, fight, dpsTable, hpsTable) {
         <div class="stat-value comp-value">
           <span class="role-badge tank">${tanks}T</span>
           <span class="role-badge healer">${healers}H</span>
-          <span class="role-badge dps">${dps}D</span>
+          <span class="role-badge melee">${melee}M</span>
+          <span class="role-badge ranged">${ranged}R</span>
         </div>
         <div class="stat-sub">${total} players</div>
       </div>

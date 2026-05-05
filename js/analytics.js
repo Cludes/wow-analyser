@@ -1,5 +1,5 @@
 import {
-  fmt, fmtTime, CLASS_COLORS, MAJOR_COOLDOWNS,
+  fmt, fmtTime, CLASS_COLORS, MAJOR_COOLDOWNS, INTERRUPT_CAPABLE,
   ROAST_DEATH, COACH_DEATH, ROAST_AVOIDABLE, COACH_AVOIDABLE
 } from './constants.js';
 
@@ -241,6 +241,34 @@ export function buildTimelineEvents(deaths, casts, damageTakenEntries) {
     events.push({ t: d.timestamp, type: 'death', label: `${d.targetName} died`, severity: 'critical' });
   }
   return events.sort((a, b) => a.t - b.t);
+}
+
+// --- Zero interrupters ---
+
+export function findZeroInterrupters(fightPlayers, interruptsData) {
+  const interrupters = new Set(interruptsData.players.map(p => p.player));
+  return fightPlayers
+    .filter(p => INTERRUPT_CAPABLE.has(p.class) && !interrupters.has(p.name))
+    .map(p => ({ player: p.name, class: p.class }));
+}
+
+// --- Fight grade ---
+
+export function computeFightGrade(deaths, avoidable, cooldownEff) {
+  let score = 100;
+  const totalDeaths = deaths.reduce((s, d) => s + d.count, 0);
+  score -= Math.min(40, totalDeaths * 8);
+  const critCount = avoidable.filter(a => a.severity === 'critical').length;
+  const warnCount = avoidable.filter(a => a.severity === 'warning').length;
+  score -= Math.min(25, critCount * 6 + warnCount * 2);
+  const totalMissed = cooldownEff.reduce((s, e) => s + e.missed, 0);
+  score -= Math.min(15, totalMissed * 2);
+  score = Math.max(0, score);
+  if (score >= 90) return { grade: 'A', score };
+  if (score >= 75) return { grade: 'B', score };
+  if (score >= 60) return { grade: 'C', score };
+  if (score >= 45) return { grade: 'D', score };
+  return { grade: 'F', score };
 }
 
 // --- helpers ---

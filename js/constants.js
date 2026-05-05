@@ -23,22 +23,63 @@ export const CLASS_DISPLAY = {
   Warlock: 'Warlock', Warrior: 'Warrior',
 };
 
-// WCL actor subType e.g. "DeathKnight-Blood"
-// Hunter-Survival = melee DPS; DemonHunter-Havoc = ranged DPS; Evoker-Augmentation = ranged DPS
+// WCL actor subType e.g. "DeathKnight-Blood" -> role
+// Source: WoWAnalyzer SPECS.ts
+export const SPEC_ROLES = {
+  // Tanks
+  'DeathKnight-Blood':     'Tank',
+  'DemonHunter-Vengeance': 'Tank',
+  'Druid-Guardian':        'Tank',
+  'Monk-Brewmaster':       'Tank',
+  'Paladin-Protection':    'Tank',
+  'Warrior-Protection':    'Tank',
+  // Healers
+  'Druid-Restoration':     'Healer',
+  'Evoker-Preservation':   'Healer',
+  'Monk-Mistweaver':       'Healer',
+  'Paladin-Holy':          'Healer',
+  'Priest-Discipline':     'Healer',
+  'Priest-Holy':           'Healer',
+  'Shaman-Restoration':    'Healer',
+  // Melee DPS (Hunter-Survival = melee per WoWAnalyzer)
+  'DeathKnight-Frost':     'Melee',
+  'DeathKnight-Unholy':    'Melee',
+  'DemonHunter-Havoc':     'Melee',
+  'Druid-Feral':           'Melee',
+  'Hunter-Survival':       'Melee',
+  'Monk-Windwalker':       'Melee',
+  'Paladin-Retribution':   'Melee',
+  'Rogue-Assassination':   'Melee',
+  'Rogue-Outlaw':          'Melee',
+  'Rogue-Subtlety':        'Melee',
+  'Shaman-Enhancement':    'Melee',
+  'Warrior-Arms':          'Melee',
+  'Warrior-Fury':          'Melee',
+  // Ranged DPS (Evoker-Augmentation = ranged per WoWAnalyzer)
+  'Druid-Balance':         'Ranged',
+  'Evoker-Augmentation':   'Ranged',
+  'Evoker-Devastation':    'Ranged',
+  'Hunter-BeastMastery':   'Ranged',
+  'Hunter-Marksmanship':   'Ranged',
+  'Mage-Arcane':           'Ranged',
+  'Mage-Fire':             'Ranged',
+  'Mage-Frost':            'Ranged',
+  'Priest-Shadow':         'Ranged',
+  'Shaman-Elemental':      'Ranged',
+  'Warlock-Affliction':    'Ranged',
+  'Warlock-Demonology':    'Ranged',
+  'Warlock-Destruction':   'Ranged',
+};
+
+// Classes with a self-cast interrupt ability (Priest has none)
+export const INTERRUPT_CAPABLE = new Set([
+  'DeathKnight', 'DemonHunter', 'Druid', 'Evoker',
+  'Hunter', 'Mage', 'Monk', 'Paladin',
+  'Rogue', 'Shaman', 'Warlock', 'Warrior',
+]);
+
 export function getRole(icon) {
-  const tanks = [
-    'DeathKnight-Blood', 'DemonHunter-Vengeance',
-    'Druid-Guardian', 'Monk-Brewmaster',
-    'Paladin-Protection', 'Warrior-Protection',
-  ];
-  const healers = [
-    'Druid-Restoration', 'Evoker-Preservation',
-    'Monk-Mistweaver', 'Paladin-Holy',
-    'Priest-Discipline', 'Priest-Holy', 'Shaman-Restoration',
-  ];
-  if (tanks.includes(icon)) return 'Tank';
-  if (healers.includes(icon)) return 'Healer';
-  return 'DPS';
+  return SPEC_ROLES[icon] ?? 'DPS';
 }
 
 export function getClass(icon) {

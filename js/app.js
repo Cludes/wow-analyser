@@ -7,6 +7,7 @@ import {
   analyzeDeaths, analyzeAvoidableDamage, extractCooldownUsages,
   findUnderperformers, analyzeInterrupts, analyzeDispels,
   analyzeCooldownEfficiency, buildTimelineEvents,
+  findZeroInterrupters, computeFightGrade,
 } from './analytics.js';
 import { renderOverview }     from './ui/overview.js';
 import { renderDpsChart }     from './ui/dps-chart.js';
@@ -279,16 +280,23 @@ function renderCurrentTab() {
     case 'cooldowns':
       renderCooldowns(document.getElementById('tab-cooldowns'), cooldownUsages, S.fight);
       break;
-    case 'analysis':
+    case 'analysis': {
+      const analyzedDeaths    = analyzeDeaths(deaths, S.report.actors, S.fight.duration, S.roastMode);
+      const analyzedAvoidable = analyzeAvoidableDamage(dtTable, S.roastMode);
+      const analyzedCdEff     = analyzeCooldownEfficiency(cooldownUsages, S.fight);
+      const analyzedInterrupts = analyzeInterrupts(interrupts, S.report.actors);
       renderMistakes(document.getElementById('tab-analysis'), {
-        deaths:          analyzeDeaths(deaths, S.report.actors, S.fight.duration, S.roastMode),
-        avoidable:       analyzeAvoidableDamage(dtTable, S.roastMode),
-        underperformers: findUnderperformers(dpsTable, S.roastMode),
-        interrupts:      analyzeInterrupts(interrupts, S.report.actors),
-        dispels:         analyzeDispels(dispels, S.report.actors),
-        cooldownEff:     analyzeCooldownEfficiency(cooldownUsages, S.fight),
+        deaths:           analyzedDeaths,
+        avoidable:        analyzedAvoidable,
+        underperformers:  findUnderperformers(dpsTable, S.roastMode),
+        interrupts:       analyzedInterrupts,
+        dispels:          analyzeDispels(dispels, S.report.actors),
+        cooldownEff:      analyzedCdEff,
+        zeroInterrupters: findZeroInterrupters(S.fight.players, analyzedInterrupts),
+        grade:            computeFightGrade(analyzedDeaths, analyzedAvoidable, analyzedCdEff),
       }, S.roastMode);
       break;
+    }
     case 'timeline':
       renderRaidTimeline(
         document.getElementById('tab-timeline'),
