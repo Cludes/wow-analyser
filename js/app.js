@@ -221,9 +221,9 @@ async function selectFight(fightId) {
     const code = S.report.code;
     const [dpsTableRaw, hpsTableRaw, dtTableRaw, dpsGraphRaw, hpsGraphRaw, deathEvents, castEvents] = await Promise.all([
       wcl.getFightTable(code, fightId, 'DamageDone'),
-      wcl.getFightTable(code, fightId, 'HealingDone'),
+      wcl.getFightTable(code, fightId, 'Healing'),
       wcl.getFightTable(code, fightId, 'DamageTaken'),
-      wcl.getFightGraph(code, fightId, 'Damage'),
+      wcl.getFightGraph(code, fightId, 'DamageDone'),
       wcl.getFightGraph(code, fightId, 'Healing'),
       wcl.getDeaths(code, fightId, fight.startTime, fight.endTime),
       wcl.getCasts(code, fightId, fight.startTime, fight.endTime),
