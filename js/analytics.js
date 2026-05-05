@@ -75,14 +75,26 @@ function looksAvoidable(name) {
   return AVOIDABLE_KEYWORDS.some(k => name.includes(k));
 }
 
+// --- CD discovery cache (localStorage) ---
+
+const CD_CACHE_KEY = 'wcl_discovered_cds';
+
+function loadCdCache() {
+  try { return JSON.parse(localStorage.getItem(CD_CACHE_KEY) ?? '{}'); } catch { return {}; }
+}
+
+function saveCdCache(cache) {
+  try { localStorage.setItem(CD_CACHE_KEY, JSON.stringify(cache)); } catch {}
+}
+
 // --- Cooldown extraction from cast events ---
 
 export function extractCooldownUsages(casts, actorMap, fight) {
   const usages = [];
   const knownIds = new Set(Object.keys(MAJOR_COOLDOWNS).map(Number));
-  const fightDur = fight?.duration ?? 0;
+  const cache = loadCdCache();
 
-  // Pass 1: known cooldowns
+  // Pass 1: known cooldowns from hardcoded list
   for (const c of casts) {
     const cd = MAJOR_COOLDOWNS[c.spellId];
     if (!cd) continue;
@@ -99,34 +111,46 @@ export function extractCooldownUsages(casts, actorMap, fight) {
     });
   }
 
-  // Pass 2: auto-discover unknown CDs by gap analysis
+  // Pass 2: auto-discover unknown CDs by gap analysis + cache
   const grouped = {};
   for (const c of casts) {
     if (knownIds.has(c.spellId)) continue;
     if (!c.spellName || c.spellName === 'Unknown') continue;
     const key = `${c.sourceId}_${c.spellId}`;
-    if (!grouped[key]) grouped[key] = { sourceId: c.sourceId, sourceName: c.sourceName, spellId: c.spellId, spellName: c.spellName, times: [] };
+    if (!grouped[key]) grouped[key] = {
+      sourceId: c.sourceId, sourceName: c.sourceName,
+      spellId: c.spellId, spellName: c.spellName, times: [],
+    };
     grouped[key].times.push(c.timestamp);
   }
 
+  const updatedCache = { ...cache };
+
   for (const g of Object.values(grouped)) {
     const times = g.times.slice().sort((a, b) => a - b);
-    let qualifies = false;
+    const actor = actorMap[g.sourceId] ?? { name: g.sourceName, class: 'Unknown' };
+    const cacheKey = String(g.spellId);
 
     if (times.length >= 2) {
       const gaps = [];
       for (let i = 1; i < times.length; i++) gaps.push(times[i] - times[i - 1]);
       gaps.sort((a, b) => a - b);
       const medianGap = gaps[Math.floor(gaps.length / 2)];
-      qualifies = medianGap >= 60_000;
-    } else if (times.length === 1 && fightDur >= 120_000) {
-      // Single cast in a fight ≥2 min - include, fight may just be shorter than the CD
-      qualifies = true;
+      if (medianGap >= 30_000) {
+        // Confirmed CD - persist to cache
+        updatedCache[cacheKey] = {
+          spellName: g.spellName,
+          minGap:    Math.min(medianGap, updatedCache[cacheKey]?.minGap ?? Infinity),
+        };
+      } else {
+        continue;
+      }
+    } else if (cache[cacheKey]) {
+      // Seen before with a long gap - trust the cache even for single use
+    } else {
+      continue;
     }
 
-    if (!qualifies) continue;
-
-    const actor = actorMap[g.sourceId] ?? { name: g.sourceName, class: 'Unknown' };
     for (const t of times) {
       usages.push({
         t,
@@ -141,6 +165,7 @@ export function extractCooldownUsages(casts, actorMap, fight) {
     }
   }
 
+  saveCdCache(updatedCache);
   return usages.sort((a, b) => a.t - b.t);
 }
 
