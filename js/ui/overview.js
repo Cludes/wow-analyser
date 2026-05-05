@@ -57,7 +57,7 @@ export function renderOverview(container, report, fight, dpsTable, hpsTable) {
     <div class="bar-table">${renderBarRows(hpsTable, totalHeal, fight.duration)}</div>
 
     <div class="section-title">Raid Composition</div>
-    <div class="comp-grid">${renderCompGrid(fight.players)}</div>
+    <div class="comp-groups">${renderCompGrid(fight.players)}</div>
   `;
 }
 
@@ -84,14 +84,33 @@ function renderBarRows(entries, total, duration) {
 }
 
 function renderCompGrid(players) {
-  return players.map(p => {
-    const color = CLASS_COLORS[p.class] ?? '#888';
+  const groups = [
+    { label: 'Tanks',   roles: ['Tank'],           color: '#93c5fd' },
+    { label: 'Healers', roles: ['Healer'],          color: '#2ded68' },
+    { label: 'Melee',   roles: ['Melee'],           color: '#fb923c' },
+    { label: 'Ranged',  roles: ['Ranged', 'DPS'],   color: '#c4b5fd' },
+  ];
+  return groups.map(g => {
+    const members = players.filter(p => g.roles.includes(p.role));
+    if (!members.length) return '';
     return `
-      <div class="comp-player" style="border-color:${color}20">
-        <div class="comp-class-dot" style="background:${color}"></div>
-        <div class="comp-info">
-          <div class="comp-name" style="color:${color}">${p.name}</div>
-          <div class="comp-spec">${CLASS_DISPLAY[p.class] ?? p.class} &bull; <span class="role-tag ${p.role.toLowerCase()}">${p.role}</span></div>
+      <div class="comp-group">
+        <div class="comp-group-header">
+          <span style="color:${g.color}">${g.label}</span>
+          <span class="comp-group-count">${members.length}</span>
+        </div>
+        <div class="comp-group-grid">
+          ${members.map(p => {
+            const color = CLASS_COLORS[p.class] ?? '#888';
+            return `
+              <div class="comp-player">
+                <div class="comp-class-dot" style="background:${color}"></div>
+                <div class="comp-info">
+                  <div class="comp-name" style="color:${color}">${p.name}</div>
+                  <div class="comp-spec">${CLASS_DISPLAY[p.class] ?? p.class}</div>
+                </div>
+              </div>`;
+          }).join('')}
         </div>
       </div>`;
   }).join('');

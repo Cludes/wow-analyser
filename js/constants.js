@@ -162,12 +162,12 @@ export const MAJOR_COOLDOWNS = {
 };
 
 export const CD_TYPE_COLORS = {
-  'offensive':      '#e85d04',
-  'raid-defensive': '#023e8a',
-  'tank-defensive': '#1b4332',
-  'healing':        '#2d6a4f',
-  'defensive':      '#3a0ca3',
-  'utility':        '#6c757d',
+  'offensive':      '#f97316',
+  'raid-defensive': '#60a5fa',
+  'tank-defensive': '#34d399',
+  'healing':        '#4ade80',
+  'defensive':      '#a78bfa',
+  'utility':        '#9e9278',
 };
 
 export const ROAST_DEATH = [

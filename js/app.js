@@ -207,6 +207,16 @@ function fmtDur(ms) {
   return `${m}:${String(s % 60).padStart(2, '0')}`;
 }
 
+function updateFightContextBar(fight) {
+  const bar = document.getElementById('fight-ctx-bar');
+  document.getElementById('fctx-name').textContent = fight.name;
+  document.getElementById('fctx-meta').textContent =
+    `${fight.difficulty} · ${fmtDur(fight.duration)} · ${fight.players.length} players`;
+  document.getElementById('fctx-result').innerHTML =
+    `<span class="result-badge ${fight.kill ? 'kill' : 'wipe'}">${fight.kill ? 'KILL' : 'WIPE'}</span>`;
+  bar.classList.add('visible');
+}
+
 // --- fight selection ---
 
 async function selectFight(fightId) {
@@ -216,6 +226,7 @@ async function selectFight(fightId) {
 
   S.fight    = fight;
   S.fightData = null;
+  updateFightContextBar(fight);
   setLoading(true);
   showSkeleton();
 

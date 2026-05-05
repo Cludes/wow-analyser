@@ -61,11 +61,11 @@ function buildChart(series, fight) {
       plugins: {
         legend: { display: false },
         tooltip: {
-          backgroundColor: 'rgba(22,15,10,0.97)',
-          borderColor: 'rgba(248,183,0,0.3)',
+          backgroundColor: 'rgba(18,14,11,0.97)',
+          borderColor: 'rgba(250,183,0,0.25)',
           borderWidth: 1,
-          titleColor: '#f8b700',
-          bodyColor: '#9e9278',
+          titleColor: '#fab700',
+          bodyColor: 'hsl(44,6%,68%)',
           padding: 10,
           callbacks: {
             label: ctx => ` ${ctx.dataset.label}: ${fmt(ctx.raw)}/s`,
@@ -107,7 +107,15 @@ function renderLegend(el, series) {
 function renderPlayerTable(el, entries, mode) {
   if (!el || !entries.length) return;
   const max = entries[0].total;
-  el.innerHTML = entries.map((e, i) => {
+  const label = mode === 'hps' ? 'HPS' : 'DPS';
+  el.innerHTML = `
+    <div class="pst-header">
+      <span></span><span>Player</span><span></span>
+      <span class="h-r">${label}</span>
+      <span class="h-r">Total</span>
+      <span class="h-r">Active</span>
+      <span class="h-r">iLvl</span>
+    </div>` + entries.map((e, i) => {
     const color = CLASS_COLORS[e.class] ?? '#888';
     const barW  = max > 0 ? (e.total / max * 100) : 0;
     return `
