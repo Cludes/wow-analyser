@@ -2,12 +2,14 @@ import { wcl, extractReportCode } from './api/wcl.js';
 import {
   parseReport, parseDPSTable, parseHPSTable, parseDamageTakenTable,
   parseGraph, parseDeaths, parseCasts, parseInterrupts, parseDispels,
+  parseResurrects,
 } from './parser.js';
 import {
   analyzeDeaths, analyzeAvoidableDamage, extractCooldownUsages,
   findUnderperformers, analyzeInterrupts, analyzeDispels,
   analyzeCooldownEfficiency, buildTimelineEvents,
   findZeroInterrupters, computeFightGrade,
+  detectCooldownOverlaps, analyzeBloodlust, analyzeBattleRez,
 } from './analytics.js';
 import { renderOverview }     from './ui/overview.js';
 import { renderDpsChart }     from './ui/dps-chart.js';
@@ -22,7 +24,6 @@ const S = {
   fightData: null,
   activeTab: 'overview',
   dpsMode:   'dps',
-  roastMode: true,
   loading:   false,
 };
 
@@ -32,7 +33,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   loadStoredCredentials();
   bindEvents();
 
-  // Handle OAuth callback before anything else
   if (window.location.search.includes('code=')) {
     setLoading(true);
     try {
@@ -52,8 +52,6 @@ function loadStoredCredentials() {
   document.getElementById('inp-client-id').value     = localStorage.getItem('wcl_client_id')     ?? '';
   document.getElementById('inp-client-secret').value = localStorage.getItem('wcl_client_secret') ?? '';
   document.getElementById('redirect-uri-display').textContent = window.location.origin + window.location.pathname;
-  S.roastMode = localStorage.getItem('roast_mode') !== 'false';
-  updateRoastToggle();
 }
 
 // --- auth UI ---
@@ -69,7 +67,6 @@ async function updateAuthUI() {
   userLabel.style.display = loggedIn ? 'inline-flex' : 'none';
 
   if (loggedIn) {
-    // Fetch username in background - don't block UI
     wcl.getCurrentUser().then(user => {
       if (user) userLabel.textContent = user.name;
     }).catch(() => {});
@@ -79,12 +76,10 @@ async function updateAuthUI() {
 // --- events ---
 
 function bindEvents() {
-  // credentials modal
   document.getElementById('btn-api-settings').onclick = () => showModal('modal-credentials');
   document.getElementById('btn-save-creds').onclick    = saveCredentials;
   document.getElementById('btn-cancel-creds').onclick  = () => hideModal('modal-credentials');
 
-  // login / logout
   document.getElementById('btn-login').onclick = () => {
     if (!wcl.clientId) {
       showModal('modal-credentials');
@@ -104,41 +99,27 @@ function bindEvents() {
     showToast('Logged out.');
   };
 
-  // report load
   document.getElementById('btn-load').onclick = loadReport;
   document.getElementById('inp-report').addEventListener('keydown', e => {
     if (e.key === 'Enter') loadReport();
   });
 
-  // tabs
   document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.onclick = () => switchTab(btn.dataset.tab);
   });
 
-  // roast toggle
-  document.getElementById('btn-roast-toggle').onclick = () => {
-    S.roastMode = !S.roastMode;
-    localStorage.setItem('roast_mode', String(S.roastMode));
-    updateRoastToggle();
-    if (S.fightData) renderCurrentTab();
-  };
-
-  // fight selector (delegated)
   document.getElementById('fight-list').addEventListener('click', e => {
     const btn = e.target.closest('.fight-btn');
     if (btn) selectFight(parseInt(btn.dataset.fightId));
   });
 
-  // player row click (delegated)
   document.getElementById('tab-dps').addEventListener('click', e => {
     const row = e.target.closest('.player-row');
     if (row) openPlayerDetail(row.dataset.name);
   });
 
-  // player detail close
   document.getElementById('btn-close-detail').onclick = () => hideModal('modal-player-detail');
 
-  // DPS mode toggle (delegated)
   document.getElementById('tab-dps').addEventListener('click', e => {
     const btn = e.target.closest('.toggle-btn');
     if (btn?.dataset.mode) {
@@ -207,6 +188,16 @@ function fmtDur(ms) {
   return `${m}:${String(s % 60).padStart(2, '0')}`;
 }
 
+function updateFightContextBar(fight) {
+  const bar = document.getElementById('fight-ctx-bar');
+  document.getElementById('fctx-name').textContent = fight.name;
+  document.getElementById('fctx-meta').textContent =
+    `${fight.difficulty} · ${fmtDur(fight.duration)} · ${fight.players.length} players`;
+  document.getElementById('fctx-result').innerHTML =
+    `<span class="result-badge ${fight.kill ? 'kill' : 'wipe'}">${fight.kill ? 'KILL' : 'WIPE'}</span>`;
+  bar.classList.add('visible');
+}
+
 // --- fight selection ---
 
 async function selectFight(fightId) {
@@ -216,6 +207,7 @@ async function selectFight(fightId) {
 
   S.fight    = fight;
   S.fightData = null;
+  updateFightContextBar(fight);
   setLoading(true);
   showSkeleton();
 
@@ -223,7 +215,7 @@ async function selectFight(fightId) {
     const code = S.report.code;
     const [
       dpsTableRaw, hpsTableRaw, dtTableRaw, dpsGraphRaw, hpsGraphRaw,
-      deathEvents, castEvents, interruptEvents, dispelEvents,
+      deathEvents, castEvents, interruptEvents, dispelEvents, resurrectEvents,
     ] = await Promise.all([
       wcl.getFightTable(code, fightId, 'DamageDone'),
       wcl.getFightTable(code, fightId, 'Healing'),
@@ -234,6 +226,7 @@ async function selectFight(fightId) {
       wcl.getCasts(code, fightId, fight.startTime, fight.endTime),
       wcl.getInterrupts(code, fightId, fight.startTime, fight.endTime),
       wcl.getDispels(code, fightId, fight.startTime, fight.endTime),
+      wcl.getResurrects(code, fightId, fight.startTime, fight.endTime),
     ]);
 
     const actors     = S.report.actors;
@@ -244,10 +237,14 @@ async function selectFight(fightId) {
     const casts      = parseCasts(castEvents, actors);
     const interrupts = parseInterrupts(interruptEvents, actors);
     const dispels    = parseDispels(dispelEvents, actors);
+    const resurrects = parseResurrects(resurrectEvents, actors);
+
+    // Normalize event timestamps to fight-relative (WCL returns report-absolute times)
     for (const d of deaths)     d.timestamp = rel(d.timestamp);
     for (const c of casts)      c.timestamp = rel(c.timestamp);
     for (const i of interrupts) i.timestamp = rel(i.timestamp);
     for (const d of dispels)    d.timestamp = rel(d.timestamp);
+    for (const r of resurrects) r.timestamp = rel(r.timestamp);
 
     S.fightData = {
       dpsTable:       parseDPSTable(dpsTableRaw),
@@ -259,6 +256,7 @@ async function selectFight(fightId) {
       casts,
       interrupts,
       dispels,
+      resurrects,
       cooldownUsages: extractCooldownUsages(casts, actors),
     };
 
@@ -281,7 +279,7 @@ function switchTab(tab) {
 }
 
 function renderCurrentTab() {
-  const { dpsTable, hpsTable, dtTable, dpsGraph, hpsGraph, deaths, casts, interrupts, dispels, cooldownUsages } = S.fightData;
+  const { dpsTable, hpsTable, dtTable, dpsGraph, hpsGraph, deaths, casts, interrupts, dispels, resurrects, cooldownUsages } = S.fightData;
   switch (S.activeTab) {
     case 'overview':
       renderOverview(document.getElementById('tab-overview'), S.report, S.fight, dpsTable, hpsTable);
@@ -293,9 +291,9 @@ function renderCurrentTab() {
       renderCooldowns(document.getElementById('tab-cooldowns'), cooldownUsages, S.fight);
       break;
     case 'analysis': {
-      const analyzedDeaths    = analyzeDeaths(deaths, S.report.actors, S.fight.duration, S.roastMode);
-      const analyzedAvoidable = analyzeAvoidableDamage(dtTable, S.roastMode);
-      const analyzedCdEff     = analyzeCooldownEfficiency(cooldownUsages, S.fight);
+      const analyzedDeaths     = analyzeDeaths(deaths, S.report.actors, S.fight.duration);
+      const analyzedAvoidable  = analyzeAvoidableDamage(dtTable);
+      const analyzedCdEff      = analyzeCooldownEfficiency(cooldownUsages, S.fight);
       const analyzedInterrupts = analyzeInterrupts(interrupts, S.report.actors);
       const dpsOnly = dpsTable.filter(e => {
         const p = S.fight.players.find(pl => pl.name === e.name);
@@ -304,13 +302,16 @@ function renderCurrentTab() {
       renderMistakes(document.getElementById('tab-analysis'), {
         deaths:           analyzedDeaths,
         avoidable:        analyzedAvoidable,
-        underperformers:  findUnderperformers(dpsOnly, S.roastMode),
+        underperformers:  findUnderperformers(dpsOnly),
         interrupts:       analyzedInterrupts,
         dispels:          analyzeDispels(dispels, S.report.actors),
         cooldownEff:      analyzedCdEff,
         zeroInterrupters: findZeroInterrupters(S.fight.players, analyzedInterrupts),
         grade:            computeFightGrade(analyzedDeaths, analyzedAvoidable, analyzedCdEff),
-      }, S.roastMode);
+        cdOverlaps:       detectCooldownOverlaps(cooldownUsages),
+        bloodlust:        analyzeBloodlust(cooldownUsages, S.fight),
+        battleRez:        analyzeBattleRez(resurrects, S.fight),
+      });
       break;
     }
     case 'timeline':
@@ -379,10 +380,4 @@ function showToast(msg) {
   el.textContent = msg;
   el.className = 'toast show';
   setTimeout(() => { el.className = 'toast'; }, 3000);
-}
-
-function updateRoastToggle() {
-  const btn = document.getElementById('btn-roast-toggle');
-  btn.textContent = S.roastMode ? 'Roast Mode: ON' : 'Coach Mode';
-  btn.classList.toggle('roast-on', S.roastMode);
 }
