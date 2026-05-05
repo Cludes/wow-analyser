@@ -1,11 +1,19 @@
 import { CLASS_COLORS, CD_TYPE_COLORS, fmtTime } from '../constants.js';
 
+const activeTypes = new Set(['offensive']);
+let _lastArgs = null;
+
 export function renderCooldowns(container, cooldownUsages, fight) {
+  _lastArgs = { cooldownUsages, fight };
+
   container.innerHTML = `
     <div class="cd-controls">
-      <div class="cd-legend">
-        ${Object.entries(CD_TYPE_COLORS).map(([t,c]) => `
-          <span class="cd-legend-item"><span class="cd-swatch" style="background:${c}"></span>${t}</span>
+      <div class="cd-filter-group">
+        ${Object.entries(CD_TYPE_COLORS).map(([t, c]) => `
+          <button class="cd-filter-btn ${activeTypes.has(t) ? 'active' : ''}" data-type="${t}"
+            style="--cd-color:${c}">
+            <span class="cd-swatch" style="background:${c}"></span>${t}
+          </button>
         `).join('')}
       </div>
     </div>
@@ -14,7 +22,27 @@ export function renderCooldowns(container, cooldownUsages, fight) {
     </div>
   `;
 
-  requestAnimationFrame(() => drawCooldownCanvas(cooldownUsages, fight));
+  container.querySelector('.cd-filter-group').addEventListener('click', e => {
+    const btn = e.target.closest('.cd-filter-btn');
+    if (!btn) return;
+    const type = btn.dataset.type;
+    if (activeTypes.has(type)) {
+      if (activeTypes.size > 1) activeTypes.delete(type);
+    } else {
+      activeTypes.add(type);
+    }
+    btn.classList.toggle('active', activeTypes.has(type));
+    redraw();
+  });
+
+  requestAnimationFrame(redraw);
+}
+
+function redraw() {
+  if (!_lastArgs) return;
+  const { cooldownUsages, fight } = _lastArgs;
+  const filtered = cooldownUsages.filter(u => activeTypes.has(u.cdType));
+  drawCooldownCanvas(filtered, fight);
 }
 
 function drawCooldownCanvas(usages, fight) {
@@ -22,7 +50,6 @@ function drawCooldownCanvas(usages, fight) {
   if (!canvas) return;
   const wrap = canvas.parentElement;
 
-  // Build player rows from full fight roster sorted by role
   const roleOrder = { Tank: 0, Healer: 1, Melee: 2, Ranged: 3, DPS: 4 };
   const players = (fight.players ?? [])
     .slice()
@@ -43,11 +70,9 @@ function drawCooldownCanvas(usages, fight) {
 
   function xOf(t) { return LABEL_W + (t / dur) * drawW; }
 
-  // background
   ctx.fillStyle = '#110c09';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  // timeline ticks
   const tickEvery = niceTick(dur);
   ctx.fillStyle = '#9e9278';
   ctx.font = '11px monospace';
@@ -60,22 +85,20 @@ function drawCooldownCanvas(usages, fight) {
     ctx.beginPath(); ctx.moveTo(x, TICK_H); ctx.lineTo(x, canvas.height - PAD); ctx.stroke();
   }
 
-  // player rows
+  canvas._cds = [];
+
   players.forEach((p, row) => {
     const y = TICK_H + PAD + row * ROW_H;
     const classColor = CLASS_COLORS[p.class] ?? '#888';
 
-    // row bg
     ctx.fillStyle = row % 2 === 0 ? '#ffffff04' : '#00000020';
     ctx.fillRect(0, y, canvas.width, ROW_H);
 
-    // player label
     ctx.fillStyle = classColor;
     ctx.font = '12px sans-serif';
     ctx.textAlign = 'left';
     ctx.fillText(p.name, PAD, y + ROW_H / 2 + 4);
 
-    // cooldown bars
     const playerCDs = usages.filter(u => u.sourceId === p.id || u.sourceName === p.name);
     for (const cd of playerCDs) {
       const x  = xOf(cd.t);
@@ -89,7 +112,6 @@ function drawCooldownCanvas(usages, fight) {
       ctx.roundRect ? ctx.roundRect(x, by, w, bh, 3) : ctx.rect(x, by, w, bh);
       ctx.fill();
 
-      // label if wide enough
       if (w > 40) {
         ctx.fillStyle = '#ffffffcc';
         ctx.font = '10px sans-serif';
@@ -98,18 +120,14 @@ function drawCooldownCanvas(usages, fight) {
         ctx.fillText(label, x + 3, by + 13);
       }
 
-      // tooltip data stored for hover (simple approach)
-      canvas._cds = canvas._cds ?? [];
       canvas._cds.push({ x, y: by, w, h: bh, label: `${cd.sourceName}: ${cd.spellName} @ ${fmtTime(cd.t)}` });
     }
   });
 
-  // divider
   ctx.strokeStyle = '#ffffff12';
   ctx.lineWidth = 1;
   ctx.beginPath(); ctx.moveTo(LABEL_W, 0); ctx.lineTo(LABEL_W, canvas.height); ctx.stroke();
 
-  // hover tooltip
   installCanvasTooltip(canvas);
 }
 
