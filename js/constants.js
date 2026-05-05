@@ -86,7 +86,7 @@ export function getClass(icon) {
   return icon ? icon.split('-')[0] : 'Unknown';
 }
 
-export const DIFFICULTY_LABELS = { 1:'LFR', 2:'Normal', 3:'Heroic', 4:'Mythic', 5:'Timewalking', 10:'Mythic+', 14:'Normal', 15:'Heroic', 16:'Mythic' };
+export const DIFFICULTY_LABELS = { 1:'LFR', 2:'Normal', 3:'Normal', 4:'Heroic', 5:'Mythic', 9:'Timewalking', 10:'Mythic+', 14:'Normal', 15:'Heroic', 16:'Mythic' };
 
 // Major cooldowns: spellId -> metadata
 // Spell IDs sourced from WoWAnalyzer (github.com/WoWAnalyzer/WoWAnalyzer)
@@ -170,28 +170,6 @@ export const CD_TYPE_COLORS = {
   'utility':        '#9e9278',
 };
 
-export const ROAST_DEATH = [
-  (n, c) => `${n} decided ${c} looked like a great place to stand. Narrator: it was not.`,
-  (n, c) => `${n} vs ${c}. ${c} wins. Fatality.`,
-  (n, c) => `${n} got absolutely cooked by ${c}. Healers are filing a complaint.`,
-  (n, c) => `${n} and ${c} had a moment. It ended with ${n} on the floor.`,
-  (n, c) => `Bold move from ${n}: die to ${c} and make it everyone else's problem.`,
-];
-
-export const COACH_DEATH = [
-  (n, c) => `${n}: died to ${c}. Prioritise positioning/awareness on this mechanic.`,
-  (n, c) => `${n}: ${c} was avoidable. Review the cast / warning indicator.`,
-];
-
-export const ROAST_AVOIDABLE = [
-  (n, amt, sp) => `${n} took ${amt} from ${sp}. The circle was red. Red means bad. Usually.`,
-  (n, amt, sp) => `${n} and ${sp}: a love story told in ${amt} unnecessary damage.`,
-  (n, amt, sp) => `${n} collected ${amt} from ${sp} like it was a hobby.`,
-];
-
-export const COACH_AVOIDABLE = [
-  (n, amt, sp) => `${n} took ${amt} avoidable damage from ${sp}. Focus on dodging this ability.`,
-];
 
 export function fmt(n, digits = 1) {
   if (n >= 1e9) return (n / 1e9).toFixed(digits) + 'B';

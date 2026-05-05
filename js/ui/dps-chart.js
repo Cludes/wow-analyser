@@ -61,7 +61,7 @@ function buildChart(series, fight) {
       plugins: {
         legend: { display: false },
         tooltip: {
-          backgroundColor: 'rgba(18,14,11,0.97)',
+          backgroundColor: 'rgba(7,9,20,0.97)',
           borderColor: 'rgba(250,183,0,0.25)',
           borderWidth: 1,
           titleColor: '#fab700',

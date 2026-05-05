@@ -1,6 +1,5 @@
 import {
-  fmt, fmtTime, CLASS_COLORS, MAJOR_COOLDOWNS, INTERRUPT_CAPABLE,
-  ROAST_DEATH, COACH_DEATH, ROAST_AVOIDABLE, COACH_AVOIDABLE
+  fmt, fmtTime, MAJOR_COOLDOWNS, INTERRUPT_CAPABLE,
 } from './constants.js';
 
 // --- DPS / HPS summary stats ---
@@ -16,20 +15,18 @@ export function computePerformanceStats(tableEntries) {
 
 // --- Death analysis ---
 
-export function analyzeDeaths(deaths, actorMap, fightDuration, roastMode) {
+export function analyzeDeaths(deaths, actorMap, fightDuration) {
   const byPlayer = {};
   for (const d of deaths) {
     const key = d.targetName;
     if (!byPlayer[key]) byPlayer[key] = [];
     byPlayer[key].push(d);
   }
-  const templates = roastMode ? ROAST_DEATH : COACH_DEATH;
   return Object.entries(byPlayer).map(([name, ds]) => {
     const causes = groupBy(ds, d => d.killingBlow);
     const topCause = Object.entries(causes).sort((a,b) => b[1].length - a[1].length)[0];
     const causeName = topCause ? topCause[0] : 'Unknown';
     const count = ds.length;
-    const tpl = templates[Math.floor(Math.random() * templates.length)];
     const actor = Object.values(actorMap).find(a => a.name === name);
     return {
       player: name,
@@ -37,27 +34,25 @@ export function analyzeDeaths(deaths, actorMap, fightDuration, roastMode) {
       count,
       deaths: ds.map(d => ({ t: d.timestamp, cause: d.killingBlow, at: fmtTime(d.timestamp) })),
       topCause: causeName,
-      message: tpl(name, causeName),
+      message: `Died ${count > 1 ? `${count}x` : 'once'} - primary cause: ${causeName}. Review cooldown usage and positioning.`,
       severity: count >= 3 ? 'critical' : count >= 2 ? 'warning' : 'info',
     };
   }).sort((a, b) => b.count - a.count);
 }
 
-// --- Avoidable damage (damage taken with "avoidable" flag or high env dmg) ---
+// --- Avoidable damage ---
 
-export function analyzeAvoidableDamage(damageTakenEntries, roastMode) {
+export function analyzeAvoidableDamage(damageTakenEntries) {
   const findings = [];
-  const templates = roastMode ? ROAST_AVOIDABLE : COACH_AVOIDABLE;
   for (const entry of damageTakenEntries) {
     for (const ab of entry.abilities ?? []) {
       if (ab.total > 0 && looksAvoidable(ab.name)) {
-        const tpl = templates[Math.floor(Math.random() * templates.length)];
         findings.push({
           player:   entry.name,
           class:    entry.class,
           spell:    ab.name,
           total:    ab.total,
-          message:  tpl(entry.name, fmt(ab.total), ab.name),
+          message:  `Took ${fmt(ab.total)} from ${ab.name}. This ability is avoidable.`,
           severity: ab.total > 5_000_000 ? 'critical' : 'warning',
         });
       }
@@ -99,7 +94,7 @@ export function extractCooldownUsages(casts, actorMap) {
 
 // --- DPS underperformance ---
 
-export function findUnderperformers(dpsEntries, roastMode) {
+export function findUnderperformers(dpsEntries) {
   if (dpsEntries.length < 3) return [];
   const avg = dpsEntries.reduce((s, e) => s + e.perSecond, 0) / dpsEntries.length;
   const threshold = avg * 0.65;
@@ -111,9 +106,7 @@ export function findUnderperformers(dpsEntries, roastMode) {
       dps:      e.perSecond,
       avg,
       pct:      Math.round((1 - e.perSecond / avg) * 100),
-      message:  roastMode
-        ? `${e.name} pulled ${fmt(e.perSecond)} DPS against a raid average of ${fmt(avg)}. The bench is calling.`
-        : `${e.name}: ${fmt(e.perSecond)} DPS, ${Math.round((1 - e.perSecond/avg)*100)}% below raid average. Review cooldown usage and rotation.`,
+      message:  `${fmt(e.perSecond)} DPS - ${Math.round((1 - e.perSecond/avg)*100)}% below raid average of ${fmt(avg)}. Review cooldown usage and rotation.`,
       severity: 'warning',
     }));
 }
@@ -136,7 +129,6 @@ export function analyzeInterrupts(interrupts, actorMap) {
     byPlayer[i.sourceName].stopped[spell] = (byPlayer[i.sourceName].stopped[spell] ?? 0) + 1;
   }
 
-  // Top interrupted spells across the raid
   const spellTotals = {};
   for (const i of interrupts) {
     spellTotals[i.interruptedSpell] = (spellTotals[i.interruptedSpell] ?? 0) + 1;
@@ -233,7 +225,59 @@ export function analyzeCooldownEfficiency(cooldownUsages, fight) {
     .sort((a, b) => b.missed - a.missed || a.player.localeCompare(b.player));
 }
 
-// --- Timeline events (boss abilities + dmg spikes) ---
+// --- Detect overlapping defensive cooldowns ---
+
+export function detectCooldownOverlaps(cooldownUsages, thresholdMs = 20_000) {
+  const defensive = cooldownUsages.filter(u =>
+    ['raid-defensive', 'tank-defensive', 'defensive'].includes(u.cdType)
+  );
+  const overlaps = [];
+  for (let i = 0; i < defensive.length; i++) {
+    for (let j = i + 1; j < defensive.length; j++) {
+      const a = defensive[i], b = defensive[j];
+      if (a.sourceId === b.sourceId) continue;
+      const gap = Math.abs(a.t - b.t);
+      if (gap < thresholdMs) {
+        overlaps.push({ a, b, gapMs: gap });
+      }
+    }
+  }
+  return overlaps.sort((x, y) => x.gapMs - y.gapMs).slice(0, 6);
+}
+
+// --- Bloodlust / Heroism timing ---
+
+const BL_SPELL_IDS = new Set([2825, 32182, 80353, 264667]);
+export function analyzeBloodlust(cooldownUsages, fight) {
+  const bl = cooldownUsages.filter(u => BL_SPELL_IDS.has(u.spellId));
+  if (!bl.length) return null;
+  const dur = fight.duration;
+  return {
+    uses: bl.map(u => {
+      const pct = u.t / dur;
+      const timing = pct < 0.15 ? 'opener' : pct > 0.75 ? 'late' : 'mid';
+      return { ...u, at: fmtTime(u.t), timing };
+    }),
+    total: bl.length,
+  };
+}
+
+// --- Battle rez tracking ---
+
+export function analyzeBattleRez(resurrects, fight) {
+  if (!resurrects.length) return null;
+  const fightSec = fight.duration / 1000;
+  // 1 charge at pull + 1 per 90s up to 4 total
+  const maxBrez = Math.min(4, 1 + Math.floor(fightSec / 90));
+  return {
+    uses: resurrects.map(r => ({ ...r, at: fmtTime(r.timestamp) })),
+    total: resurrects.length,
+    maxAvailable: maxBrez,
+    unused: Math.max(0, maxBrez - resurrects.length),
+  };
+}
+
+// --- Timeline events ---
 
 export function buildTimelineEvents(deaths, casts, damageTakenEntries) {
   const events = [];

@@ -81,6 +81,7 @@ function parseTableEntries(entries) {
     total:      e.total ?? 0,
     activeTime: e.activeTime ?? 0,
     perSecond:  e.activeTime ? (e.total / e.activeTime * 1000) : 0,
+    overheal:   e.overheal ?? 0,
     ilvl:       e.itemLevel ?? null,
     abilities:  (e.abilities ?? []).slice(0, 10).map(a => ({
       name:  a.name,
@@ -149,6 +150,17 @@ export function parseDispels(events) {
     dispelledSpellId: e.extraAbility?.guid ?? 0,
     dispelledSpell:   e.extraAbility?.name ?? 'Unknown',
     targetName:       e.target?.name ?? e.targetName ?? 'Unknown',
+  }));
+}
+
+export function parseResurrects(events) {
+  return events.filter(e => e.type === 'resurrect').map(e => ({
+    timestamp:  e.timestamp,
+    sourceId:   e.sourceID,
+    sourceName: e.source?.name ?? e.sourceName ?? 'Unknown',
+    targetName: e.target?.name ?? e.targetName ?? 'Unknown',
+    spellId:    e.ability?.guid ?? 0,
+    spellName:  e.ability?.name ?? 'Battle Rez',
   }));
 }
 

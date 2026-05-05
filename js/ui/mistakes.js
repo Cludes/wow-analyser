@@ -1,22 +1,28 @@
-import { CLASS_COLORS, CD_TYPE_COLORS, fmt } from '../constants.js';
+import { CLASS_COLORS, CD_TYPE_COLORS, fmt, fmtTime } from '../constants.js';
 
-export function renderMistakes(container, { deaths, avoidable, underperformers, interrupts, dispels, cooldownEff, zeroInterrupters, grade }, roastMode) {
+export function renderMistakes(container, {
+  deaths, avoidable, underperformers, interrupts, dispels,
+  cooldownEff, zeroInterrupters, grade, cdOverlaps, bloodlust, battleRez,
+}) {
   const hasIssues = deaths.length || avoidable.length || underperformers.length || cooldownEff.length;
   container.innerHTML = `
     <div class="mistakes-header">
       <div class="mistakes-title-row">
-        <h2 class="mistakes-title">${roastMode ? '🔥 Raid Report Card' : 'Performance Analysis'}</h2>
+        <h2 class="mistakes-title">Performance Analysis</h2>
         ${grade ? renderGradeBadge(grade) : ''}
       </div>
-      <p class="mistakes-sub">${roastMode ? 'No feelings were spared in the making of this analysis.' : 'Objective performance summary.'}</p>
+      <p class="mistakes-sub">Objective performance summary based on deaths, avoidable damage, and cooldown usage.</p>
     </div>
-    ${!hasIssues && !interrupts.total ? '<div class="empty-state">No issues detected. Suspicious.</div>' : ''}
-    ${deaths.length         ? renderSection('Deaths',              'skull',         deaths.map(d => makeCard(d, 'death')))           : ''}
-    ${avoidable.length      ? renderSection('Avoidable Damage',    'shield-off',    avoidable.map(d => makeCard(d, 'avoidable')))    : ''}
-    ${underperformers.length? renderSection('DPS Check',           'trending-down', underperformers.map(d => makeCard(d, 'dps')))    : ''}
-    ${cooldownEff.length    ? renderSection('Cooldown Efficiency', 'clock',         [renderCooldownEff(cooldownEff)])                 : ''}
-    ${interrupts.total > 0  ? renderSection('Interrupts',          'zap',           [renderInterrupts(interrupts, zeroInterrupters)]) : ''}
-    ${dispels.total > 0     ? renderSection('Dispels',             'refresh-cw',    [renderDispels(dispels)])                        : ''}
+    ${!hasIssues && !interrupts.total ? '<div class="empty-state">No significant issues detected this fight.</div>' : ''}
+    ${deaths.length          ? renderSection('Deaths',                 'skull',       deaths.map(d => makeCard(d, 'death')))           : ''}
+    ${avoidable.length       ? renderSection('Avoidable Damage',       'shield-off',  avoidable.map(d => makeCard(d, 'avoidable')))    : ''}
+    ${underperformers.length ? renderSection('DPS Check',              'trending-dn', underperformers.map(d => makeCard(d, 'dps')))    : ''}
+    ${cooldownEff.length     ? renderSection('Cooldown Efficiency',    'clock',       [renderCooldownEff(cooldownEff)])                 : ''}
+    ${interrupts.total > 0   ? renderSection('Interrupts',             'zap',         [renderInterrupts(interrupts, zeroInterrupters)]) : ''}
+    ${dispels.total > 0      ? renderSection('Dispels',                'refresh-cw',  [renderDispels(dispels)])                        : ''}
+    ${cdOverlaps?.length     ? renderSection('Defensive CD Overlaps',  'overlap',     [renderCooldownOverlaps(cdOverlaps)])             : ''}
+    ${renderSection('Bloodlust / Heroism', 'bloodlust', [renderBloodlust(bloodlust)])}
+    ${renderSection('Battle Rezzes',       'brez',      [renderBattleRez(battleRez)])}
   `;
 }
 
@@ -152,5 +158,75 @@ function renderCooldownEff(entries) {
             <span class="cd-eff-missed ${e.missed >= 2 ? 'sev-critical' : 'sev-warning'}">-${e.missed}</span>
           </div>`;
       }).join('')}
+    </div>`;
+}
+
+// --- Cooldown overlaps ---
+
+function renderCooldownOverlaps(overlaps) {
+  if (!overlaps.length) return '<div class="int-summary">No overlapping defensive cooldowns detected.</div>';
+  return `
+    <div class="interrupt-block">
+      <div class="int-summary">${overlaps.length} overlap${overlaps.length > 1 ? 's' : ''} detected - consider staggering for better coverage</div>
+      <div class="int-table">
+        ${overlaps.map(o => {
+          const colorA = CLASS_COLORS[o.a.class] ?? '#888';
+          const colorB = CLASS_COLORS[o.b.class] ?? '#888';
+          const typeColor = CD_TYPE_COLORS[o.a.cdType] ?? '#888';
+          return `
+            <div class="int-row">
+              <span class="int-name" style="color:${colorA}">${o.a.sourceName}</span>
+              <span class="int-spell-chip" style="color:${typeColor}">${o.a.spellName}</span>
+              <span style="color:var(--text-dim)">+</span>
+              <span class="int-name" style="color:${colorB}">${o.b.sourceName}</span>
+              <span class="int-spell-chip">${o.b.spellName}</span>
+              <span class="overlap-gap">${Math.round(o.gapMs / 1000)}s apart @ ${fmtTime(o.a.t)}</span>
+            </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+}
+
+// --- Bloodlust / Heroism ---
+
+function renderBloodlust(bl) {
+  if (!bl) return '<div class="int-summary">No Bloodlust / Heroism detected this fight.</div>';
+  const timingLabel = { opener: 'Opener', mid: 'Mid-fight', late: 'Late' };
+  const timingColor = { opener: '#2ded68', mid: '#fab700', late: '#e63946' };
+  return `
+    <div class="interrupt-block">
+      <div class="int-summary">${bl.total} use${bl.total > 1 ? 's' : ''} this fight</div>
+      <div class="int-table">
+        ${bl.uses.map(u => `
+          <div class="int-row">
+            <span class="int-name" style="color:${CLASS_COLORS[u.class] ?? '#888'}">${u.sourceName}</span>
+            <span class="int-count">${u.at}</span>
+            <span class="int-spell-chip">${u.spellName}</span>
+            <span class="int-spell-chip" style="color:${timingColor[u.timing]}">${timingLabel[u.timing]}</span>
+          </div>`).join('')}
+      </div>
+    </div>`;
+}
+
+// --- Battle rez ---
+
+function renderBattleRez(brez) {
+  if (!brez) return '<div class="int-summary">No battle rezzes this fight.</div>';
+  const unusedNote = brez.unused > 0
+    ? `<span style="color:var(--red);font-weight:700">${brez.unused} unused</span>`
+    : '<span style="color:var(--green)">All used</span>';
+  return `
+    <div class="interrupt-block">
+      <div class="int-summary">${brez.total} / ${brez.maxAvailable} available - ${unusedNote}</div>
+      ${brez.uses.length ? `
+        <div class="int-table">
+          ${brez.uses.map(r => `
+            <div class="int-row">
+              <span class="int-name" style="color:var(--text)">${r.sourceName}</span>
+              <span style="color:var(--text-muted);font-size:12px">rezzed</span>
+              <span class="int-name" style="color:var(--text)">${r.targetName}</span>
+              <span class="int-count">${r.at}</span>
+            </div>`).join('')}
+        </div>` : ''}
     </div>`;
 }
