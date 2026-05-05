@@ -45,12 +45,12 @@ function drawCooldownCanvas(usages, fight) {
   function xOf(t) { return LABEL_W + (t / dur) * drawW; }
 
   // background
-  ctx.fillStyle = '#0d0d1a';
+  ctx.fillStyle = '#110c09';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   // timeline ticks
   const tickEvery = niceTick(dur);
-  ctx.fillStyle = '#6a6a8a';
+  ctx.fillStyle = '#9e9278';
   ctx.font = '11px monospace';
   ctx.textAlign = 'center';
   for (let t = 0; t <= dur; t += tickEvery) {

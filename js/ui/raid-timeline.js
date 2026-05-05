@@ -35,14 +35,14 @@ function drawTimeline(fight, deaths, cooldownUsages, timelineEvents) {
   canvas.style.height = H + 'px';
 
   const ctx = canvas.getContext('2d');
-  ctx.fillStyle = '#0d0d1a';
+  ctx.fillStyle = '#110c09';
   ctx.fillRect(0, 0, W, H);
 
   function xOf(t) { return LABEL + (t / dur) * drawW; }
 
   // ticks
   const tickEvery = niceTick(dur);
-  ctx.fillStyle = '#6a6a8a';
+  ctx.fillStyle = '#9e9278';
   ctx.font = '11px monospace';
   ctx.textAlign = 'center';
   for (let t = 0; t <= dur; t += tickEvery) {

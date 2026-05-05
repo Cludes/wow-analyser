@@ -61,11 +61,12 @@ function buildChart(series, fight) {
       plugins: {
         legend: { display: false },
         tooltip: {
-          backgroundColor: '#1a1a2e',
-          borderColor: '#c8a53e44',
+          backgroundColor: 'rgba(22,15,10,0.97)',
+          borderColor: 'rgba(248,183,0,0.3)',
           borderWidth: 1,
-          titleColor: '#c8a53e',
-          bodyColor: '#b0b0cc',
+          titleColor: '#f8b700',
+          bodyColor: '#9e9278',
+          padding: 10,
           callbacks: {
             label: ctx => ` ${ctx.dataset.label}: ${fmt(ctx.raw)}/s`,
           },
