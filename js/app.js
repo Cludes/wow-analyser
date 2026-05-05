@@ -229,19 +229,35 @@ async function selectFight(fightId) {
       wcl.getResurrects(code, fightId, fight.startTime, fight.endTime),
     ]);
 
-    const casts = parseCasts(castEvents);
+    const actors     = S.report.actors;
+    const fightStart = fight.startTime;
+    const rel        = t => t - fightStart;
+
+    const deaths     = parseDeaths(deathEvents, actors);
+    const casts      = parseCasts(castEvents, actors);
+    const interrupts = parseInterrupts(interruptEvents, actors);
+    const dispels    = parseDispels(dispelEvents, actors);
+    const resurrects = parseResurrects(resurrectEvents, actors);
+
+    // Normalize event timestamps to fight-relative (WCL returns report-absolute times)
+    for (const d of deaths)     d.timestamp = rel(d.timestamp);
+    for (const c of casts)      c.timestamp = rel(c.timestamp);
+    for (const i of interrupts) i.timestamp = rel(i.timestamp);
+    for (const d of dispels)    d.timestamp = rel(d.timestamp);
+    for (const r of resurrects) r.timestamp = rel(r.timestamp);
+
     S.fightData = {
       dpsTable:       parseDPSTable(dpsTableRaw),
       hpsTable:       parseHPSTable(hpsTableRaw),
       dtTable:        parseDamageTakenTable(dtTableRaw),
       dpsGraph:       parseGraph(dpsGraphRaw),
       hpsGraph:       parseGraph(hpsGraphRaw),
-      deaths:         parseDeaths(deathEvents),
+      deaths,
       casts,
-      interrupts:     parseInterrupts(interruptEvents),
-      dispels:        parseDispels(dispelEvents),
-      resurrects:     parseResurrects(resurrectEvents),
-      cooldownUsages: extractCooldownUsages(casts, S.report.actors),
+      interrupts,
+      dispels,
+      resurrects,
+      cooldownUsages: extractCooldownUsages(casts, actors),
     };
 
     document.getElementById('dashboard').style.display = 'block';

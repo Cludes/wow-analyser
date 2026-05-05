@@ -95,70 +95,77 @@ export function parseDamageTakenTable(raw) {
   return parseDPSTable(raw); // same structure
 }
 
-export function parseGraph(raw, dataType = 'DamageDone') {
+export function parseGraph(raw) {
   const graph = ensureObj(raw.reportData?.report?.graph);
   const series = graph?.data?.series ?? [];
-  return series.map(s => ({
-    id:    s.id,
-    name:  s.name,
-    class: getClass(s.icon ?? ''),
-    total: s.total ?? 0,
-    data:  (s.data ?? []).filter(Array.isArray).map(([t, v]) => ({ t, v })),
-  }));
+  return series
+    .filter(s => s && typeof s === 'object' && s.id !== -1)  // drop padding (0) and Total (-1)
+    .map(s => ({
+      id:    s.id,
+      name:  s.name,
+      class: getClass(s.icon ?? ''),
+      total: s.total ?? 0,
+      data:  (s.data ?? [])
+        .filter(p => Array.isArray(p) ? p.length >= 2 : p && typeof p === 'object')
+        .map(p => Array.isArray(p)
+          ? { t: p[0], v: p[1] }
+          : { t: p.time ?? p.t ?? 0, v: p.total ?? p.y ?? p.v ?? 0 }
+        ),
+    }));
 }
 
-export function parseDeaths(events) {
+export function parseDeaths(events, actorMap = {}) {
   return events.map(e => ({
-    timestamp: e.timestamp,
-    targetId:  e.targetID,
-    targetName: e.targetName ?? e.target?.name ?? 'Unknown',
-    killingBlow: e.killingBlow?.ability?.name ?? e.ability?.name ?? 'Unknown',
-    overkill: e.overkill ?? e.amount ?? 0,
+    timestamp:   e.timestamp,
+    targetId:    e.targetID,
+    targetName:  actorMap[e.targetID]?.name ?? e.targetName ?? 'Unknown',
+    killingBlow: e.ability?.name ?? 'Unknown',
+    overkill:    e.overkill ?? e.amount ?? 0,
   }));
 }
 
-export function parseCasts(events) {
+export function parseCasts(events, actorMap = {}) {
   return events.filter(e => e.type === 'cast').map(e => ({
     timestamp:  e.timestamp,
     sourceId:   e.sourceID,
-    sourceName: e.source?.name ?? e.sourceName ?? 'Unknown',
+    sourceName: actorMap[e.sourceID]?.name ?? e.sourceName ?? 'Unknown',
     spellId:    e.ability?.guid ?? e.abilityGameID ?? 0,
     spellName:  e.ability?.name ?? 'Unknown',
   }));
 }
 
-export function parseInterrupts(events) {
+export function parseInterrupts(events, actorMap = {}) {
   return events.filter(e => e.type === 'interrupt').map(e => ({
     timestamp:          e.timestamp,
     sourceId:           e.sourceID,
-    sourceName:         e.source?.name ?? e.sourceName ?? 'Unknown',
+    sourceName:         actorMap[e.sourceID]?.name ?? e.sourceName ?? 'Unknown',
     spellId:            e.ability?.guid ?? 0,
     spellName:          e.ability?.name ?? 'Unknown',
     interruptedSpellId: e.extraAbility?.guid ?? 0,
     interruptedSpell:   e.extraAbility?.name ?? 'Unknown',
-    targetName:         e.target?.name ?? e.targetName ?? 'Unknown',
+    targetName:         actorMap[e.targetID]?.name ?? e.targetName ?? 'Unknown',
   }));
 }
 
-export function parseDispels(events) {
+export function parseDispels(events, actorMap = {}) {
   return events.filter(e => e.type === 'dispel').map(e => ({
     timestamp:        e.timestamp,
     sourceId:         e.sourceID,
-    sourceName:       e.source?.name ?? e.sourceName ?? 'Unknown',
+    sourceName:       actorMap[e.sourceID]?.name ?? e.sourceName ?? 'Unknown',
     spellId:          e.ability?.guid ?? 0,
     spellName:        e.ability?.name ?? 'Unknown',
     dispelledSpellId: e.extraAbility?.guid ?? 0,
     dispelledSpell:   e.extraAbility?.name ?? 'Unknown',
-    targetName:       e.target?.name ?? e.targetName ?? 'Unknown',
+    targetName:       actorMap[e.targetID]?.name ?? e.targetName ?? 'Unknown',
   }));
 }
 
-export function parseResurrects(events) {
+export function parseResurrects(events, actorMap = {}) {
   return events.filter(e => e.type === 'resurrect').map(e => ({
     timestamp:  e.timestamp,
     sourceId:   e.sourceID,
-    sourceName: e.source?.name ?? e.sourceName ?? 'Unknown',
-    targetName: e.target?.name ?? e.targetName ?? 'Unknown',
+    sourceName: actorMap[e.sourceID]?.name ?? e.sourceName ?? 'Unknown',
+    targetName: actorMap[e.targetID]?.name ?? e.targetName ?? 'Unknown',
     spellId:    e.ability?.guid ?? 0,
     spellName:  e.ability?.name ?? 'Battle Rez',
   }));
