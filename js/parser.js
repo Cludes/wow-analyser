@@ -124,6 +124,32 @@ export function parseCasts(events) {
   }));
 }
 
+export function parseInterrupts(events) {
+  return events.filter(e => e.type === 'interrupt').map(e => ({
+    timestamp:          e.timestamp,
+    sourceId:           e.sourceID,
+    sourceName:         e.source?.name ?? e.sourceName ?? 'Unknown',
+    spellId:            e.ability?.guid ?? 0,
+    spellName:          e.ability?.name ?? 'Unknown',
+    interruptedSpellId: e.extraAbility?.guid ?? 0,
+    interruptedSpell:   e.extraAbility?.name ?? 'Unknown',
+    targetName:         e.target?.name ?? e.targetName ?? 'Unknown',
+  }));
+}
+
+export function parseDispels(events) {
+  return events.filter(e => e.type === 'dispel').map(e => ({
+    timestamp:        e.timestamp,
+    sourceId:         e.sourceID,
+    sourceName:       e.source?.name ?? e.sourceName ?? 'Unknown',
+    spellId:          e.ability?.guid ?? 0,
+    spellName:        e.ability?.name ?? 'Unknown',
+    dispelledSpellId: e.extraAbility?.guid ?? 0,
+    dispelledSpell:   e.extraAbility?.name ?? 'Unknown',
+    targetName:       e.target?.name ?? e.targetName ?? 'Unknown',
+  }));
+}
+
 function ensureObj(v) {
   if (!v) return null;
   if (typeof v === 'string') {

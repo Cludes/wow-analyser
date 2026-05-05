@@ -51,73 +51,73 @@ export const DIFFICULTY_LABELS = { 1:'LFR', 2:'Normal', 3:'Heroic', 4:'Mythic', 
 // Spell IDs sourced from WoWAnalyzer (github.com/WoWAnalyzer/WoWAnalyzer)
 export const MAJOR_COOLDOWNS = {
   // Warrior
-  97462:  { name: 'Rallying Cry',         class:'Warrior',     type:'raid-defensive', duration:10 },
-  107574: { name: 'Avatar',               class:'Warrior',     type:'offensive',      duration:20 },
-  1719:   { name: 'Recklessness',         class:'Warrior',     type:'offensive',      duration:12 },
-  446035: { name: 'Bladestorm',           class:'Warrior',     type:'offensive',      duration:6  },
+  97462:  { name: 'Rallying Cry',         class:'Warrior',     type:'raid-defensive', duration:10, cd:180 },
+  107574: { name: 'Avatar',               class:'Warrior',     type:'offensive',      duration:20, cd:90  },
+  1719:   { name: 'Recklessness',         class:'Warrior',     type:'offensive',      duration:12, cd:90  },
+  446035: { name: 'Bladestorm',           class:'Warrior',     type:'offensive',      duration:6,  cd:60  },
 
   // Paladin
-  454351: { name: 'Avenging Wrath',       class:'Paladin',     type:'offensive',      duration:20 },
-  86659:  { name: 'Guardian of AK',       class:'Paladin',     type:'tank-defensive', duration:8  },
+  454351: { name: 'Avenging Wrath',       class:'Paladin',     type:'offensive',      duration:20, cd:120 },
+  86659:  { name: 'Guardian of AK',       class:'Paladin',     type:'tank-defensive', duration:8,  cd:300 },
 
   // Hunter
-  19574:  { name: 'Bestial Wrath',        class:'Hunter',      type:'offensive',      duration:15 },
-  193530: { name: 'Aspect of the Wild',   class:'Hunter',      type:'offensive',      duration:20 },
-  288613: { name: 'Trueshot',             class:'Hunter',      type:'offensive',      duration:15 },
+  19574:  { name: 'Bestial Wrath',        class:'Hunter',      type:'offensive',      duration:15, cd:90  },
+  193530: { name: 'Aspect of the Wild',   class:'Hunter',      type:'offensive',      duration:20, cd:120 },
+  288613: { name: 'Trueshot',             class:'Hunter',      type:'offensive',      duration:15, cd:120 },
 
   // Priest
-  64844:  { name: 'Divine Hymn',          class:'Priest',      type:'healing',        duration:8  },
-  33206:  { name: 'Pain Suppression',     class:'Priest',      type:'defensive',      duration:8  },
-  47536:  { name: 'Rapture',              class:'Priest',      type:'healing',        duration:8  },
-  81782:  { name: 'Power Word: Barrier',  class:'Priest',      type:'raid-defensive', duration:10 },
+  64844:  { name: 'Divine Hymn',          class:'Priest',      type:'healing',        duration:8,  cd:180 },
+  33206:  { name: 'Pain Suppression',     class:'Priest',      type:'defensive',      duration:8,  cd:180 },
+  47536:  { name: 'Rapture',              class:'Priest',      type:'healing',        duration:8,  cd:90  },
+  81782:  { name: 'Power Word: Barrier',  class:'Priest',      type:'raid-defensive', duration:10, cd:180 },
 
   // Death Knight
-  42650:  { name: 'Army of the Dead',     class:'DeathKnight', type:'offensive',      duration:8  },
-  51271:  { name: 'Pillar of Frost',      class:'DeathKnight', type:'offensive',      duration:12 },
-  81256:  { name: 'Dancing Rune Weapon',  class:'DeathKnight', type:'tank-defensive', duration:8  },
-  55233:  { name: 'Vampiric Blood',       class:'DeathKnight', type:'tank-defensive', duration:10 },
-  48792:  { name: 'Icebound Fortitude',   class:'DeathKnight', type:'defensive',      duration:8  },
-  145629: { name: 'Anti-Magic Zone',      class:'DeathKnight', type:'raid-defensive', duration:8  },
+  42650:  { name: 'Army of the Dead',     class:'DeathKnight', type:'offensive',      duration:8,  cd:480 },
+  51271:  { name: 'Pillar of Frost',      class:'DeathKnight', type:'offensive',      duration:12, cd:60  },
+  81256:  { name: 'Dancing Rune Weapon',  class:'DeathKnight', type:'tank-defensive', duration:8,  cd:120 },
+  55233:  { name: 'Vampiric Blood',       class:'DeathKnight', type:'tank-defensive', duration:10, cd:180 },
+  48792:  { name: 'Icebound Fortitude',   class:'DeathKnight', type:'defensive',      duration:8,  cd:180 },
+  145629: { name: 'Anti-Magic Zone',      class:'DeathKnight', type:'raid-defensive', duration:8,  cd:120 },
 
   // Shaman
-  108280: { name: 'Healing Tide Totem',   class:'Shaman',      type:'healing',        duration:10 },
-  98008:  { name: 'Spirit Link Totem',    class:'Shaman',      type:'raid-defensive', duration:6  },
-  207399: { name: 'Ancestral Protection', class:'Shaman',      type:'raid-defensive', duration:30 },
-  198067: { name: 'Fire Elemental',       class:'Shaman',      type:'offensive',      duration:30 },
-  2825:   { name: 'Bloodlust',            class:'Shaman',      type:'utility',        duration:40 },
-  32182:  { name: 'Heroism',              class:'Shaman',      type:'utility',        duration:40 },
+  108280: { name: 'Healing Tide Totem',   class:'Shaman',      type:'healing',        duration:10, cd:180 },
+  98008:  { name: 'Spirit Link Totem',    class:'Shaman',      type:'raid-defensive', duration:6,  cd:180 },
+  207399: { name: 'Ancestral Protection', class:'Shaman',      type:'raid-defensive', duration:30, cd:300 },
+  198067: { name: 'Fire Elemental',       class:'Shaman',      type:'offensive',      duration:30, cd:150 },
+  2825:   { name: 'Bloodlust',            class:'Shaman',      type:'utility',        duration:40, cd:300 },
+  32182:  { name: 'Heroism',              class:'Shaman',      type:'utility',        duration:40, cd:300 },
 
   // Mage
-  190319: { name: 'Combustion',           class:'Mage',        type:'offensive',      duration:10 },
-  12472:  { name: 'Icy Veins',            class:'Mage',        type:'offensive',      duration:20 },
-  365350: { name: 'Arcane Surge',         class:'Mage',        type:'offensive',      duration:15 },
-  80353:  { name: 'Time Warp',            class:'Mage',        type:'utility',        duration:40 },
+  190319: { name: 'Combustion',           class:'Mage',        type:'offensive',      duration:10, cd:120 },
+  12472:  { name: 'Icy Veins',            class:'Mage',        type:'offensive',      duration:20, cd:120 },
+  365350: { name: 'Arcane Surge',         class:'Mage',        type:'offensive',      duration:15, cd:120 },
+  80353:  { name: 'Time Warp',            class:'Mage',        type:'utility',        duration:40, cd:300 },
 
   // Warlock
-  104773: { name: 'Unending Resolve',     class:'Warlock',     type:'defensive',      duration:8  },
+  104773: { name: 'Unending Resolve',     class:'Warlock',     type:'defensive',      duration:8,  cd:180 },
 
   // Rogue
-  13750:  { name: 'Adrenaline Rush',      class:'Rogue',       type:'offensive',      duration:20 },
-  185313: { name: 'Shadow Dance',         class:'Rogue',       type:'offensive',      duration:8  },
+  13750:  { name: 'Adrenaline Rush',      class:'Rogue',       type:'offensive',      duration:20, cd:180 },
+  185313: { name: 'Shadow Dance',         class:'Rogue',       type:'offensive',      duration:8,  cd:60  },
 
   // Monk
-  137639: { name: 'Storm Earth Fire',     class:'Monk',        type:'offensive',      duration:15 },
-  115310: { name: 'Revival',              class:'Monk',        type:'healing',        duration:0  },
-  116849: { name: 'Life Cocoon',          class:'Monk',        type:'defensive',      duration:12 },
+  137639: { name: 'Storm Earth Fire',     class:'Monk',        type:'offensive',      duration:15, cd:90  },
+  115310: { name: 'Revival',              class:'Monk',        type:'healing',        duration:0,  cd:180 },
+  116849: { name: 'Life Cocoon',          class:'Monk',        type:'defensive',      duration:12, cd:120 },
 
   // Druid
-  740:    { name: 'Tranquility',          class:'Druid',       type:'healing',        duration:8  },
-  194223: { name: 'Celestial Alignment',  class:'Druid',       type:'offensive',      duration:20 },
-  29166:  { name: 'Innervate',            class:'Druid',       type:'utility',        duration:10 },
+  740:    { name: 'Tranquility',          class:'Druid',       type:'healing',        duration:8,  cd:180 },
+  194223: { name: 'Celestial Alignment',  class:'Druid',       type:'offensive',      duration:20, cd:180 },
+  29166:  { name: 'Innervate',            class:'Druid',       type:'utility',        duration:10, cd:180 },
 
   // Demon Hunter
-  200166: { name: 'Metamorphosis',        class:'DemonHunter', type:'offensive',      duration:30 },
-  187827: { name: 'Metamorphosis',        class:'DemonHunter', type:'tank-defensive', duration:15 },
-  196718: { name: 'Darkness',             class:'DemonHunter', type:'raid-defensive', duration:8  },
+  200166: { name: 'Metamorphosis',        class:'DemonHunter', type:'offensive',      duration:30, cd:240 },
+  187827: { name: 'Metamorphosis',        class:'DemonHunter', type:'tank-defensive', duration:15, cd:180 },
+  196718: { name: 'Darkness',             class:'DemonHunter', type:'raid-defensive', duration:8,  cd:300 },
 
   // Evoker
-  390386: { name: 'Fury of the Aspects',  class:'Evoker',      type:'offensive',      duration:20 },
-  363534: { name: 'Rewind',               class:'Evoker',      type:'healing',        duration:0  },
+  390386: { name: 'Fury of the Aspects',  class:'Evoker',      type:'offensive',      duration:20, cd:120 },
+  363534: { name: 'Rewind',               class:'Evoker',      type:'healing',        duration:0,  cd:240 },
 };
 
 export const CD_TYPE_COLORS = {

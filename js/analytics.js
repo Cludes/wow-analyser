@@ -120,14 +120,117 @@ export function findUnderperformers(dpsEntries, roastMode) {
 
 // --- Interrupt analysis ---
 
-export function analyzeInterrupts(casts, actorMap) {
-  const interrupts = casts.filter(c => c.spellName?.toLowerCase().includes('interrupt') || c.spellId === 2139 || c.spellId === 1766);
-  const byPlayer = groupBy(interrupts, c => c.sourceName);
-  return Object.entries(byPlayer).map(([name, cs]) => ({
-    player: name,
-    count:  cs.length,
-    times:  cs.map(c => fmtTime(c.timestamp)),
-  })).sort((a, b) => b.count - a.count);
+export function analyzeInterrupts(interrupts, actorMap) {
+  const byPlayer = {};
+  for (const i of interrupts) {
+    if (!byPlayer[i.sourceName]) {
+      byPlayer[i.sourceName] = {
+        player: i.sourceName,
+        class:  actorMap[i.sourceId]?.class ?? 'Unknown',
+        count:  0,
+        stopped: {},
+      };
+    }
+    byPlayer[i.sourceName].count++;
+    const spell = i.interruptedSpell;
+    byPlayer[i.sourceName].stopped[spell] = (byPlayer[i.sourceName].stopped[spell] ?? 0) + 1;
+  }
+
+  // Top interrupted spells across the raid
+  const spellTotals = {};
+  for (const i of interrupts) {
+    spellTotals[i.interruptedSpell] = (spellTotals[i.interruptedSpell] ?? 0) + 1;
+  }
+  const topSpells = Object.entries(spellTotals)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 6)
+    .map(([name, count]) => ({ name, count }));
+
+  const players = Object.values(byPlayer)
+    .sort((a, b) => b.count - a.count)
+    .map(p => ({
+      ...p,
+      topStopped: Object.entries(p.stopped)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 3)
+        .map(([name, count]) => ({ name, count })),
+    }));
+
+  return { players, topSpells, total: interrupts.length };
+}
+
+// --- Dispel analysis ---
+
+export function analyzeDispels(dispels, actorMap) {
+  const byPlayer = {};
+  for (const d of dispels) {
+    if (!byPlayer[d.sourceName]) {
+      byPlayer[d.sourceName] = {
+        player:  d.sourceName,
+        class:   actorMap[d.sourceId]?.class ?? 'Unknown',
+        count:   0,
+        removed: {},
+      };
+    }
+    byPlayer[d.sourceName].count++;
+    const spell = d.dispelledSpell;
+    byPlayer[d.sourceName].removed[spell] = (byPlayer[d.sourceName].removed[spell] ?? 0) + 1;
+  }
+
+  const spellTotals = {};
+  for (const d of dispels) {
+    spellTotals[d.dispelledSpell] = (spellTotals[d.dispelledSpell] ?? 0) + 1;
+  }
+  const topSpells = Object.entries(spellTotals)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 5)
+    .map(([name, count]) => ({ name, count }));
+
+  const players = Object.values(byPlayer)
+    .sort((a, b) => b.count - a.count)
+    .map(p => ({
+      ...p,
+      topRemoved: Object.entries(p.removed)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 3)
+        .map(([name, count]) => ({ name, count })),
+    }));
+
+  return { players, topSpells, total: dispels.length };
+}
+
+// --- Cooldown efficiency ---
+
+export function analyzeCooldownEfficiency(cooldownUsages, fight) {
+  const fightSec = fight.duration / 1000;
+  const byKey = {};
+
+  for (const u of cooldownUsages) {
+    const cd = MAJOR_COOLDOWNS[u.spellId];
+    if (!cd?.cd) continue;
+    const key = `${u.sourceId}_${u.spellId}`;
+    if (!byKey[key]) {
+      byKey[key] = {
+        player:    u.sourceName,
+        class:     u.class,
+        spellId:   u.spellId,
+        spellName: u.spellName,
+        cdType:    u.cdType,
+        cdSec:     cd.cd,
+        uses:      [],
+      };
+    }
+    byKey[key].uses.push(fmtTime(u.t));
+  }
+
+  return Object.values(byKey)
+    .map(e => {
+      const maxPossible = Math.max(1, Math.floor(fightSec / e.cdSec));
+      const actual      = e.uses.length;
+      return { ...e, actual, maxPossible, missed: maxPossible - actual };
+    })
+    .filter(e => e.missed > 0)
+    .sort((a, b) => b.missed - a.missed || a.player.localeCompare(b.player));
 }
 
 // --- Timeline events (boss abilities + dmg spikes) ---

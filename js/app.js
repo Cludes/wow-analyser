@@ -1,11 +1,12 @@
 import { wcl, extractReportCode } from './api/wcl.js';
 import {
   parseReport, parseDPSTable, parseHPSTable, parseDamageTakenTable,
-  parseGraph, parseDeaths, parseCasts,
+  parseGraph, parseDeaths, parseCasts, parseInterrupts, parseDispels,
 } from './parser.js';
 import {
   analyzeDeaths, analyzeAvoidableDamage, extractCooldownUsages,
-  findUnderperformers, analyzeInterrupts, buildTimelineEvents,
+  findUnderperformers, analyzeInterrupts, analyzeDispels,
+  analyzeCooldownEfficiency, buildTimelineEvents,
 } from './analytics.js';
 import { renderOverview }     from './ui/overview.js';
 import { renderDpsChart }     from './ui/dps-chart.js';
@@ -219,7 +220,10 @@ async function selectFight(fightId) {
 
   try {
     const code = S.report.code;
-    const [dpsTableRaw, hpsTableRaw, dtTableRaw, dpsGraphRaw, hpsGraphRaw, deathEvents, castEvents] = await Promise.all([
+    const [
+      dpsTableRaw, hpsTableRaw, dtTableRaw, dpsGraphRaw, hpsGraphRaw,
+      deathEvents, castEvents, interruptEvents, dispelEvents,
+    ] = await Promise.all([
       wcl.getFightTable(code, fightId, 'DamageDone'),
       wcl.getFightTable(code, fightId, 'Healing'),
       wcl.getFightTable(code, fightId, 'DamageTaken'),
@@ -227,8 +231,11 @@ async function selectFight(fightId) {
       wcl.getFightGraph(code, fightId, 'Healing'),
       wcl.getDeaths(code, fightId, fight.startTime, fight.endTime),
       wcl.getCasts(code, fightId, fight.startTime, fight.endTime),
+      wcl.getInterrupts(code, fightId, fight.startTime, fight.endTime),
+      wcl.getDispels(code, fightId, fight.startTime, fight.endTime),
     ]);
 
+    const casts = parseCasts(castEvents);
     S.fightData = {
       dpsTable:       parseDPSTable(dpsTableRaw),
       hpsTable:       parseHPSTable(hpsTableRaw),
@@ -236,8 +243,10 @@ async function selectFight(fightId) {
       dpsGraph:       parseGraph(dpsGraphRaw),
       hpsGraph:       parseGraph(hpsGraphRaw),
       deaths:         parseDeaths(deathEvents),
-      casts:          parseCasts(castEvents),
-      cooldownUsages: extractCooldownUsages(parseCasts(castEvents), S.report.actors),
+      casts,
+      interrupts:     parseInterrupts(interruptEvents),
+      dispels:        parseDispels(dispelEvents),
+      cooldownUsages: extractCooldownUsages(casts, S.report.actors),
     };
 
     document.getElementById('dashboard').style.display = 'block';
@@ -259,7 +268,7 @@ function switchTab(tab) {
 }
 
 function renderCurrentTab() {
-  const { dpsTable, hpsTable, dtTable, dpsGraph, hpsGraph, deaths, casts, cooldownUsages } = S.fightData;
+  const { dpsTable, hpsTable, dtTable, dpsGraph, hpsGraph, deaths, casts, interrupts, dispels, cooldownUsages } = S.fightData;
   switch (S.activeTab) {
     case 'overview':
       renderOverview(document.getElementById('tab-overview'), S.report, S.fight, dpsTable, hpsTable);
@@ -275,7 +284,9 @@ function renderCurrentTab() {
         deaths:          analyzeDeaths(deaths, S.report.actors, S.fight.duration, S.roastMode),
         avoidable:       analyzeAvoidableDamage(dtTable, S.roastMode),
         underperformers: findUnderperformers(dpsTable, S.roastMode),
-        interrupts:      analyzeInterrupts(casts, S.report.actors),
+        interrupts:      analyzeInterrupts(interrupts, S.report.actors),
+        dispels:         analyzeDispels(dispels, S.report.actors),
+        cooldownEff:     analyzeCooldownEfficiency(cooldownUsages, S.fight),
       }, S.roastMode);
       break;
     case 'timeline':
