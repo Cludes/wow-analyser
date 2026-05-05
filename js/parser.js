@@ -100,7 +100,7 @@ export function parseGraph(raw, dataType = 'DamageDone') {
     name:  s.name,
     class: getClass(s.icon ?? ''),
     total: s.total ?? 0,
-    data:  (s.data ?? []).map(([t, v]) => ({ t, v })),
+    data:  (s.data ?? []).filter(Array.isArray).map(([t, v]) => ({ t, v })),
   }));
 }
 
