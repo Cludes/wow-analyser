@@ -196,6 +196,7 @@ export const CD_TYPE_COLORS = {
   'healing':        '#2d6a4f',
   'defensive':      '#3a0ca3',
   'utility':        '#6c757d',
+  'discovered':     '#7c3aed',
 };
 
 export const ROAST_DEATH = [

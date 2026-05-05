@@ -1,5 +1,6 @@
 import {
-  fmt, fmtTime, MAJOR_COOLDOWNS, INTERRUPT_CAPABLE,
+  fmt, fmtTime, CLASS_COLORS, MAJOR_COOLDOWNS, INTERRUPT_CAPABLE,
+  ROAST_DEATH, COACH_DEATH, ROAST_AVOIDABLE, COACH_AVOIDABLE
 } from './constants.js';
 
 // --- DPS / HPS summary stats ---
@@ -15,18 +16,20 @@ export function computePerformanceStats(tableEntries) {
 
 // --- Death analysis ---
 
-export function analyzeDeaths(deaths, actorMap, fightDuration) {
+export function analyzeDeaths(deaths, actorMap, fightDuration, roastMode) {
   const byPlayer = {};
   for (const d of deaths) {
     const key = d.targetName;
     if (!byPlayer[key]) byPlayer[key] = [];
     byPlayer[key].push(d);
   }
+  const templates = roastMode ? ROAST_DEATH : COACH_DEATH;
   return Object.entries(byPlayer).map(([name, ds]) => {
     const causes = groupBy(ds, d => d.killingBlow);
     const topCause = Object.entries(causes).sort((a,b) => b[1].length - a[1].length)[0];
     const causeName = topCause ? topCause[0] : 'Unknown';
     const count = ds.length;
+    const tpl = templates[Math.floor(Math.random() * templates.length)];
     const actor = Object.values(actorMap).find(a => a.name === name);
     return {
       player: name,
@@ -34,25 +37,27 @@ export function analyzeDeaths(deaths, actorMap, fightDuration) {
       count,
       deaths: ds.map(d => ({ t: d.timestamp, cause: d.killingBlow, at: fmtTime(d.timestamp) })),
       topCause: causeName,
-      message: `Died ${count > 1 ? `${count}x` : 'once'} - primary cause: ${causeName}. Review cooldown usage and positioning.`,
+      message: tpl(name, causeName),
       severity: count >= 3 ? 'critical' : count >= 2 ? 'warning' : 'info',
     };
   }).sort((a, b) => b.count - a.count);
 }
 
-// --- Avoidable damage ---
+// --- Avoidable damage (damage taken with "avoidable" flag or high env dmg) ---
 
-export function analyzeAvoidableDamage(damageTakenEntries) {
+export function analyzeAvoidableDamage(damageTakenEntries, roastMode) {
   const findings = [];
+  const templates = roastMode ? ROAST_AVOIDABLE : COACH_AVOIDABLE;
   for (const entry of damageTakenEntries) {
     for (const ab of entry.abilities ?? []) {
       if (ab.total > 0 && looksAvoidable(ab.name)) {
+        const tpl = templates[Math.floor(Math.random() * templates.length)];
         findings.push({
           player:   entry.name,
           class:    entry.class,
           spell:    ab.name,
           total:    ab.total,
-          message:  `Took ${fmt(ab.total)} from ${ab.name}. This ability is avoidable.`,
+          message:  tpl(entry.name, fmt(ab.total), ab.name),
           severity: ab.total > 5_000_000 ? 'critical' : 'warning',
         });
       }
@@ -74,6 +79,9 @@ function looksAvoidable(name) {
 
 export function extractCooldownUsages(casts, actorMap) {
   const usages = [];
+  const knownIds = new Set(Object.keys(MAJOR_COOLDOWNS).map(Number));
+
+  // Pass 1: known cooldowns
   for (const c of casts) {
     const cd = MAJOR_COOLDOWNS[c.spellId];
     if (!cd) continue;
@@ -89,12 +97,48 @@ export function extractCooldownUsages(casts, actorMap) {
       cdType:     cd.type,
     });
   }
+
+  // Pass 2: auto-discover unknown CDs by gap analysis
+  // If the same player casts the same spell ≥2 times with median gap ≥60s, it's likely a major CD
+  const grouped = {};
+  for (const c of casts) {
+    if (knownIds.has(c.spellId)) continue;
+    const key = `${c.sourceId}_${c.spellId}`;
+    if (!grouped[key]) grouped[key] = { sourceId: c.sourceId, sourceName: c.sourceName, spellId: c.spellId, spellName: c.spellName, times: [] };
+    grouped[key].times.push(c.timestamp);
+  }
+
+  for (const g of Object.values(grouped)) {
+    if (g.times.length < 2) continue;
+    const times = g.times.slice().sort((a, b) => a - b);
+    const gaps = [];
+    for (let i = 1; i < times.length; i++) gaps.push(times[i] - times[i - 1]);
+    gaps.sort((a, b) => a - b);
+    const medianGap = gaps[Math.floor(gaps.length / 2)];
+    if (medianGap < 60_000) continue;
+
+    const actor = actorMap[g.sourceId] ?? { name: g.sourceName, class: 'Unknown', role: 'DPS' };
+
+    for (const t of times) {
+      usages.push({
+        t,
+        sourceId:   g.sourceId,
+        sourceName: actor.name,
+        class:      actor.class,
+        spellId:    g.spellId,
+        spellName:  g.spellName,
+        duration:   0,
+        cdType:     'discovered',
+      });
+    }
+  }
+
   return usages.sort((a, b) => a.t - b.t);
 }
 
 // --- DPS underperformance ---
 
-export function findUnderperformers(dpsEntries) {
+export function findUnderperformers(dpsEntries, roastMode) {
   if (dpsEntries.length < 3) return [];
   const avg = dpsEntries.reduce((s, e) => s + e.perSecond, 0) / dpsEntries.length;
   const threshold = avg * 0.65;
@@ -106,7 +150,9 @@ export function findUnderperformers(dpsEntries) {
       dps:      e.perSecond,
       avg,
       pct:      Math.round((1 - e.perSecond / avg) * 100),
-      message:  `${fmt(e.perSecond)} DPS - ${Math.round((1 - e.perSecond/avg)*100)}% below raid average of ${fmt(avg)}. Review cooldown usage and rotation.`,
+      message:  roastMode
+        ? `${e.name} pulled ${fmt(e.perSecond)} DPS against a raid average of ${fmt(avg)}. The bench is calling.`
+        : `${e.name}: ${fmt(e.perSecond)} DPS, ${Math.round((1 - e.perSecond/avg)*100)}% below raid average. Review cooldown usage and rotation.`,
       severity: 'warning',
     }));
 }
@@ -129,6 +175,7 @@ export function analyzeInterrupts(interrupts, actorMap) {
     byPlayer[i.sourceName].stopped[spell] = (byPlayer[i.sourceName].stopped[spell] ?? 0) + 1;
   }
 
+  // Top interrupted spells across the raid
   const spellTotals = {};
   for (const i of interrupts) {
     spellTotals[i.interruptedSpell] = (spellTotals[i.interruptedSpell] ?? 0) + 1;
@@ -225,59 +272,7 @@ export function analyzeCooldownEfficiency(cooldownUsages, fight) {
     .sort((a, b) => b.missed - a.missed || a.player.localeCompare(b.player));
 }
 
-// --- Detect overlapping defensive cooldowns ---
-
-export function detectCooldownOverlaps(cooldownUsages, thresholdMs = 20_000) {
-  const defensive = cooldownUsages.filter(u =>
-    ['raid-defensive', 'tank-defensive', 'defensive'].includes(u.cdType)
-  );
-  const overlaps = [];
-  for (let i = 0; i < defensive.length; i++) {
-    for (let j = i + 1; j < defensive.length; j++) {
-      const a = defensive[i], b = defensive[j];
-      if (a.sourceId === b.sourceId) continue;
-      const gap = Math.abs(a.t - b.t);
-      if (gap < thresholdMs) {
-        overlaps.push({ a, b, gapMs: gap });
-      }
-    }
-  }
-  return overlaps.sort((x, y) => x.gapMs - y.gapMs).slice(0, 6);
-}
-
-// --- Bloodlust / Heroism timing ---
-
-const BL_SPELL_IDS = new Set([2825, 32182, 80353, 264667]);
-export function analyzeBloodlust(cooldownUsages, fight) {
-  const bl = cooldownUsages.filter(u => BL_SPELL_IDS.has(u.spellId));
-  if (!bl.length) return null;
-  const dur = fight.duration;
-  return {
-    uses: bl.map(u => {
-      const pct = u.t / dur;
-      const timing = pct < 0.15 ? 'opener' : pct > 0.75 ? 'late' : 'mid';
-      return { ...u, at: fmtTime(u.t), timing };
-    }),
-    total: bl.length,
-  };
-}
-
-// --- Battle rez tracking ---
-
-export function analyzeBattleRez(resurrects, fight) {
-  if (!resurrects.length) return null;
-  const fightSec = fight.duration / 1000;
-  // 1 charge at pull + 1 per 90s up to 4 total
-  const maxBrez = Math.min(4, 1 + Math.floor(fightSec / 90));
-  return {
-    uses: resurrects.map(r => ({ ...r, at: fmtTime(r.timestamp) })),
-    total: resurrects.length,
-    maxAvailable: maxBrez,
-    unused: Math.max(0, maxBrez - resurrects.length),
-  };
-}
-
-// --- Timeline events ---
+// --- Timeline events (boss abilities + dmg spikes) ---
 
 export function buildTimelineEvents(deaths, casts, damageTakenEntries) {
   const events = [];
