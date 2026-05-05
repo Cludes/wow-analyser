@@ -86,7 +86,7 @@ export function getClass(icon) {
   return icon ? icon.split('-')[0] : 'Unknown';
 }
 
-export const DIFFICULTY_LABELS = { 1:'LFR', 2:'Normal', 3:'Normal', 4:'Heroic', 5:'Mythic', 9:'Timewalking', 10:'Mythic+', 14:'Normal', 15:'Heroic', 16:'Mythic' };
+export const DIFFICULTY_LABELS = { 1:'LFR', 2:'Normal', 3:'Heroic', 4:'Mythic', 5:'Timewalking', 10:'Mythic+', 14:'Normal', 15:'Heroic', 16:'Mythic' };
 
 // Major cooldowns: spellId -> metadata
 // Spell IDs sourced from WoWAnalyzer (github.com/WoWAnalyzer/WoWAnalyzer)
@@ -96,21 +96,28 @@ export const MAJOR_COOLDOWNS = {
   107574: { name: 'Avatar',               class:'Warrior',     type:'offensive',      duration:20, cd:90  },
   1719:   { name: 'Recklessness',         class:'Warrior',     type:'offensive',      duration:12, cd:90  },
   446035: { name: 'Bladestorm',           class:'Warrior',     type:'offensive',      duration:6,  cd:60  },
+  871:    { name: 'Shield Wall',          class:'Warrior',     type:'tank-defensive', duration:8,  cd:240 },
+  12975:  { name: 'Last Stand',           class:'Warrior',     type:'tank-defensive', duration:15, cd:180 },
 
   // Paladin
   454351: { name: 'Avenging Wrath',       class:'Paladin',     type:'offensive',      duration:20, cd:120 },
   86659:  { name: 'Guardian of AK',       class:'Paladin',     type:'tank-defensive', duration:8,  cd:300 },
+  31821:  { name: 'Aura Mastery',         class:'Paladin',     type:'raid-defensive', duration:8,  cd:180 },
+  633:    { name: 'Lay on Hands',         class:'Paladin',     type:'defensive',      duration:0,  cd:600 },
 
   // Hunter
   19574:  { name: 'Bestial Wrath',        class:'Hunter',      type:'offensive',      duration:15, cd:90  },
   193530: { name: 'Aspect of the Wild',   class:'Hunter',      type:'offensive',      duration:20, cd:120 },
   288613: { name: 'Trueshot',             class:'Hunter',      type:'offensive',      duration:15, cd:120 },
+  360952: { name: 'Coordinated Assault',  class:'Hunter',      type:'offensive',      duration:20, cd:120 },
 
   // Priest
   64844:  { name: 'Divine Hymn',          class:'Priest',      type:'healing',        duration:8,  cd:180 },
   33206:  { name: 'Pain Suppression',     class:'Priest',      type:'defensive',      duration:8,  cd:180 },
   47536:  { name: 'Rapture',              class:'Priest',      type:'healing',        duration:8,  cd:90  },
   81782:  { name: 'Power Word: Barrier',  class:'Priest',      type:'raid-defensive', duration:10, cd:180 },
+  10060:  { name: 'Power Infusion',       class:'Priest',      type:'utility',        duration:20, cd:120 },
+  246287: { name: 'Evangelism',           class:'Priest',      type:'healing',        duration:6,  cd:90  },
 
   // Death Knight
   42650:  { name: 'Army of the Dead',     class:'DeathKnight', type:'offensive',      duration:8,  cd:480 },
@@ -119,6 +126,8 @@ export const MAJOR_COOLDOWNS = {
   55233:  { name: 'Vampiric Blood',       class:'DeathKnight', type:'tank-defensive', duration:10, cd:180 },
   48792:  { name: 'Icebound Fortitude',   class:'DeathKnight', type:'defensive',      duration:8,  cd:180 },
   145629: { name: 'Anti-Magic Zone',      class:'DeathKnight', type:'raid-defensive', duration:8,  cd:120 },
+  315443: { name: 'Abomination Limb',     class:'DeathKnight', type:'offensive',      duration:12, cd:120 },
+  47568:  { name: 'Empower Rune Weapon',  class:'DeathKnight', type:'offensive',      duration:20, cd:120 },
 
   // Shaman
   108280: { name: 'Healing Tide Totem',   class:'Shaman',      type:'healing',        duration:10, cd:180 },
@@ -127,6 +136,10 @@ export const MAJOR_COOLDOWNS = {
   198067: { name: 'Fire Elemental',       class:'Shaman',      type:'offensive',      duration:30, cd:150 },
   2825:   { name: 'Bloodlust',            class:'Shaman',      type:'utility',        duration:40, cd:300 },
   32182:  { name: 'Heroism',              class:'Shaman',      type:'utility',        duration:40, cd:300 },
+  114052: { name: 'Ascendance',           class:'Shaman',      type:'healing',        duration:15, cd:180 },
+  114050: { name: 'Ascendance',           class:'Shaman',      type:'offensive',      duration:15, cd:180 },
+  114051: { name: 'Ascendance',           class:'Shaman',      type:'offensive',      duration:15, cd:180 },
+  16190:  { name: 'Mana Tide Totem',      class:'Shaman',      type:'healing',        duration:8,  cd:180 },
 
   // Mage
   190319: { name: 'Combustion',           class:'Mage',        type:'offensive',      duration:10, cd:120 },
@@ -136,40 +149,77 @@ export const MAJOR_COOLDOWNS = {
 
   // Warlock
   104773: { name: 'Unending Resolve',     class:'Warlock',     type:'defensive',      duration:8,  cd:180 },
+  107350: { name: 'Dark Pact',            class:'Warlock',     type:'defensive',      duration:20, cd:60  },
+  1122:   { name: 'Summon Infernal',      class:'Warlock',     type:'offensive',      duration:30, cd:180 },
+  205180: { name: 'Summon Darkglare',     class:'Warlock',     type:'offensive',      duration:20, cd:120 },
+  265187: { name: 'Demonic Tyrant',       class:'Warlock',     type:'offensive',      duration:15, cd:90  },
 
   // Rogue
   13750:  { name: 'Adrenaline Rush',      class:'Rogue',       type:'offensive',      duration:20, cd:180 },
   185313: { name: 'Shadow Dance',         class:'Rogue',       type:'offensive',      duration:8,  cd:60  },
+  360194: { name: 'Deathmark',            class:'Rogue',       type:'offensive',      duration:30, cd:120 },
+  323654: { name: 'Flagellation',         class:'Rogue',       type:'offensive',      duration:12, cd:90  },
 
   // Monk
   137639: { name: 'Storm Earth Fire',     class:'Monk',        type:'offensive',      duration:15, cd:90  },
   115310: { name: 'Revival',              class:'Monk',        type:'healing',        duration:0,  cd:180 },
   116849: { name: 'Life Cocoon',          class:'Monk',        type:'defensive',      duration:12, cd:120 },
+  123904: { name: 'Invoke Xuen',          class:'Monk',        type:'offensive',      duration:20, cd:120 },
+  322118: { name: "Invoke Yu'lon",        class:'Monk',        type:'healing',        duration:25, cd:180 },
+  325197: { name: 'Invoke Chi-Ji',        class:'Monk',        type:'healing',        duration:25, cd:180 },
 
   // Druid
   740:    { name: 'Tranquility',          class:'Druid',       type:'healing',        duration:8,  cd:180 },
   194223: { name: 'Celestial Alignment',  class:'Druid',       type:'offensive',      duration:20, cd:180 },
   29166:  { name: 'Innervate',            class:'Druid',       type:'utility',        duration:10, cd:180 },
+  391528: { name: 'Convoke the Spirits',  class:'Druid',       type:'offensive',      duration:4,  cd:120 },
+  197721: { name: 'Flourish',             class:'Druid',       type:'healing',        duration:0,  cd:60  },
+  106898: { name: 'Stampeding Roar',      class:'Druid',       type:'utility',        duration:8,  cd:120 },
 
   // Demon Hunter
   200166: { name: 'Metamorphosis',        class:'DemonHunter', type:'offensive',      duration:30, cd:240 },
   187827: { name: 'Metamorphosis',        class:'DemonHunter', type:'tank-defensive', duration:15, cd:180 },
   196718: { name: 'Darkness',             class:'DemonHunter', type:'raid-defensive', duration:8,  cd:300 },
+  370965: { name: 'The Hunt',             class:'DemonHunter', type:'offensive',      duration:0,  cd:90  },
 
   // Evoker
   390386: { name: 'Fury of the Aspects',  class:'Evoker',      type:'offensive',      duration:20, cd:120 },
   363534: { name: 'Rewind',               class:'Evoker',      type:'healing',        duration:0,  cd:240 },
+  374227: { name: 'Zephyr',               class:'Evoker',      type:'raid-defensive', duration:8,  cd:120 },
+  403631: { name: 'Breath of Eons',       class:'Evoker',      type:'offensive',      duration:10, cd:120 },
 };
 
 export const CD_TYPE_COLORS = {
-  'offensive':      '#f97316',
-  'raid-defensive': '#60a5fa',
-  'tank-defensive': '#34d399',
-  'healing':        '#4ade80',
-  'defensive':      '#a78bfa',
-  'utility':        '#9e9278',
+  'offensive':      '#e85d04',
+  'raid-defensive': '#023e8a',
+  'tank-defensive': '#1b4332',
+  'healing':        '#2d6a4f',
+  'defensive':      '#3a0ca3',
+  'utility':        '#6c757d',
 };
 
+export const ROAST_DEATH = [
+  (n, c) => `${n} decided ${c} looked like a great place to stand. Narrator: it was not.`,
+  (n, c) => `${n} vs ${c}. ${c} wins. Fatality.`,
+  (n, c) => `${n} got absolutely cooked by ${c}. Healers are filing a complaint.`,
+  (n, c) => `${n} and ${c} had a moment. It ended with ${n} on the floor.`,
+  (n, c) => `Bold move from ${n}: die to ${c} and make it everyone else's problem.`,
+];
+
+export const COACH_DEATH = [
+  (n, c) => `${n}: died to ${c}. Prioritise positioning/awareness on this mechanic.`,
+  (n, c) => `${n}: ${c} was avoidable. Review the cast / warning indicator.`,
+];
+
+export const ROAST_AVOIDABLE = [
+  (n, amt, sp) => `${n} took ${amt} from ${sp}. The circle was red. Red means bad. Usually.`,
+  (n, amt, sp) => `${n} and ${sp}: a love story told in ${amt} unnecessary damage.`,
+  (n, amt, sp) => `${n} collected ${amt} from ${sp} like it was a hobby.`,
+];
+
+export const COACH_AVOIDABLE = [
+  (n, amt, sp) => `${n} took ${amt} avoidable damage from ${sp}. Focus on dodging this ability.`,
+];
 
 export function fmt(n, digits = 1) {
   if (n >= 1e9) return (n / 1e9).toFixed(digits) + 'B';
