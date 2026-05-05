@@ -279,10 +279,14 @@ function renderCurrentTab() {
       const analyzedAvoidable  = analyzeAvoidableDamage(dtTable);
       const analyzedCdEff      = analyzeCooldownEfficiency(cooldownUsages, S.fight);
       const analyzedInterrupts = analyzeInterrupts(interrupts, S.report.actors);
+      const dpsOnly = dpsTable.filter(e => {
+        const p = S.fight.players.find(pl => pl.name === e.name);
+        return p && (p.role === 'Melee' || p.role === 'Ranged' || p.role === 'DPS');
+      });
       renderMistakes(document.getElementById('tab-analysis'), {
         deaths:           analyzedDeaths,
         avoidable:        analyzedAvoidable,
-        underperformers:  findUnderperformers(dpsTable),
+        underperformers:  findUnderperformers(dpsOnly),
         interrupts:       analyzedInterrupts,
         dispels:          analyzeDispels(dispels, S.report.actors),
         cooldownEff:      analyzedCdEff,
