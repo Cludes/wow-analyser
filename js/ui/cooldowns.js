@@ -1,6 +1,6 @@
 import { CLASS_COLORS, CD_TYPE_COLORS, fmtTime } from '../constants.js';
 
-const activeTypes = new Set(['offensive']);
+const activeTypes = new Set(['offensive', 'discovered']);
 let _lastArgs = null;
 
 export function renderCooldowns(container, cooldownUsages, fight) {

@@ -257,7 +257,7 @@ async function selectFight(fightId) {
       interrupts,
       dispels,
       resurrects,
-      cooldownUsages: extractCooldownUsages(casts, actors),
+      cooldownUsages: extractCooldownUsages(casts, actors, fight),
     };
 
     document.getElementById('dashboard').style.display = 'block';
