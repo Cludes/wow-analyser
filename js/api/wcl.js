@@ -194,11 +194,24 @@ class WCLClient {
     return events;
   }
 
-  async getCasts(code, fightId, s, e)       { return this.getFightEvents(code, fightId, 'Casts',         s, e); }
-  async getDeaths(code, fightId, s, e)      { return this.getFightEvents(code, fightId, 'Deaths',        s, e); }
-  async getInterrupts(code, fightId, s, e)  { return this.getFightEvents(code, fightId, 'Interrupts',    s, e); }
-  async getDispels(code, fightId, s, e)     { return this.getFightEvents(code, fightId, 'Dispels',       s, e); }
-  async getResurrects(code, fightId, s, e)  { return this.getFightEvents(code, fightId, 'Resurrections', s, e); }
+  async getFightEventsFiltered(code, fightId, filterExpression, startTime, endTime) {
+    const events = [];
+    let next = null;
+    do {
+      const vars = { code, fightId, filterExpression, startTime: next ?? startTime, endTime };
+      const data = await this.query(QUERY_EVENTS_FILTERED, vars);
+      const block = data.reportData.report.events;
+      events.push(...(block.data ?? []));
+      next = block.nextPageTimestamp ?? null;
+    } while (next && next < endTime);
+    return events;
+  }
+
+  async getCasts(code, fightId, s, e)      { return this.getFightEvents(code, fightId, 'Casts',      s, e); }
+  async getDeaths(code, fightId, s, e)     { return this.getFightEvents(code, fightId, 'Deaths',     s, e); }
+  async getInterrupts(code, fightId, s, e) { return this.getFightEvents(code, fightId, 'Interrupts', s, e); }
+  async getDispels(code, fightId, s, e)    { return this.getFightEvents(code, fightId, 'Dispels',    s, e); }
+  async getResurrects(code, fightId, s, e) { return this.getFightEventsFiltered(code, fightId, "type = 'resurrect'", s, e); }
 }
 
 // --- module-level helpers ---
@@ -261,6 +274,18 @@ query GetEvents($code: String!, $fightId: Int!, $dataType: EventDataType!, $star
   reportData {
     report(code: $code) {
       events(fightIDs: [$fightId], dataType: $dataType, startTime: $startTime, endTime: $endTime, limit: 10000) {
+        data
+        nextPageTimestamp
+      }
+    }
+  }
+}`;
+
+const QUERY_EVENTS_FILTERED = `
+query GetEventsFiltered($code: String!, $fightId: Int!, $filterExpression: String!, $startTime: Float!, $endTime: Float!) {
+  reportData {
+    report(code: $code) {
+      events(fightIDs: [$fightId], filterExpression: $filterExpression, startTime: $startTime, endTime: $endTime, limit: 10000) {
         data
         nextPageTimestamp
       }
