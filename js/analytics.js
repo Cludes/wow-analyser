@@ -272,6 +272,57 @@ export function analyzeCooldownEfficiency(cooldownUsages, fight) {
     .sort((a, b) => b.missed - a.missed || a.player.localeCompare(b.player));
 }
 
+// --- Detect overlapping defensive cooldowns ---
+
+export function detectCooldownOverlaps(cooldownUsages, thresholdMs = 20_000) {
+  const defensive = cooldownUsages.filter(u =>
+    ['raid-defensive', 'tank-defensive', 'defensive'].includes(u.cdType)
+  );
+  const overlaps = [];
+  for (let i = 0; i < defensive.length; i++) {
+    for (let j = i + 1; j < defensive.length; j++) {
+      const a = defensive[i], b = defensive[j];
+      if (a.sourceId === b.sourceId) continue;
+      const gap = Math.abs(a.t - b.t);
+      if (gap < thresholdMs) {
+        overlaps.push({ a, b, gapMs: gap });
+      }
+    }
+  }
+  return overlaps.sort((x, y) => x.gapMs - y.gapMs).slice(0, 6);
+}
+
+// --- Bloodlust / Heroism timing ---
+
+const BL_SPELL_IDS = new Set([2825, 32182, 80353, 264667]);
+export function analyzeBloodlust(cooldownUsages, fight) {
+  const bl = cooldownUsages.filter(u => BL_SPELL_IDS.has(u.spellId));
+  if (!bl.length) return null;
+  const dur = fight.duration;
+  return {
+    uses: bl.map(u => {
+      const pct = u.t / dur;
+      const timing = pct < 0.15 ? 'opener' : pct > 0.75 ? 'late' : 'mid';
+      return { ...u, at: fmtTime(u.t), timing };
+    }),
+    total: bl.length,
+  };
+}
+
+// --- Battle rez tracking ---
+
+export function analyzeBattleRez(resurrects, fight) {
+  if (!resurrects.length) return null;
+  const fightSec = fight.duration / 1000;
+  const maxBrez = Math.min(4, 1 + Math.floor(fightSec / 90));
+  return {
+    uses: resurrects.map(r => ({ ...r, at: fmtTime(r.timestamp) })),
+    total: resurrects.length,
+    maxAvailable: maxBrez,
+    unused: Math.max(0, maxBrez - resurrects.length),
+  };
+}
+
 // --- Timeline events (boss abilities + dmg spikes) ---
 
 export function buildTimelineEvents(deaths, casts, damageTakenEntries) {
