@@ -22,12 +22,11 @@ function drawCooldownCanvas(usages, fight) {
   if (!canvas) return;
   const wrap = canvas.parentElement;
 
-  // Build player rows
-  const players = [...new Map(usages.map(u => [u.sourceId ?? u.sourceName, {
-    id:    u.sourceId ?? u.sourceName,
-    name:  u.sourceName,
-    class: u.class,
-  }])).values()];
+  // Build player rows from full fight roster sorted by role
+  const roleOrder = { Tank: 0, Healer: 1, Melee: 2, Ranged: 3, DPS: 4 };
+  const players = (fight.players ?? [])
+    .slice()
+    .sort((a, b) => (roleOrder[a.role] ?? 5) - (roleOrder[b.role] ?? 5));
 
   const ROW_H   = 36;
   const LABEL_W = 140;
@@ -45,12 +44,12 @@ function drawCooldownCanvas(usages, fight) {
   function xOf(t) { return LABEL_W + (t / dur) * drawW; }
 
   // background
-  ctx.fillStyle = 'hsl(222,22%,7%)';
+  ctx.fillStyle = '#110c09';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   // timeline ticks
   const tickEvery = niceTick(dur);
-  ctx.fillStyle = 'hsl(220,8%,58%)';
+  ctx.fillStyle = '#9e9278';
   ctx.font = '11px monospace';
   ctx.textAlign = 'center';
   for (let t = 0; t <= dur; t += tickEvery) {
@@ -77,7 +76,7 @@ function drawCooldownCanvas(usages, fight) {
     ctx.fillText(p.name, PAD, y + ROW_H / 2 + 4);
 
     // cooldown bars
-    const playerCDs = usages.filter(u => (u.sourceId ?? u.sourceName) === p.id);
+    const playerCDs = usages.filter(u => u.sourceId === p.id || u.sourceName === p.name);
     for (const cd of playerCDs) {
       const x  = xOf(cd.t);
       const w  = cd.duration > 0 ? Math.max(4, (cd.duration / dur) * drawW) : 8;
