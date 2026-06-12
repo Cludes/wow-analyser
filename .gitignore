@@ -1,0 +1,13 @@
+# Secrets / generated - never commit API tokens
+config.json
+*.token
+.env
+.env.*
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+*.log
+
+# Node tooling (if used)
+node_modules/
